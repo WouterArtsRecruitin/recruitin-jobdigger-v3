@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Doelgroep Rapport — {{ distill.doelgroep_naam or vacancy.title }} | doelgroepenrapport.nl</title>
+  <meta name="description" content="Doelgroep-rapport voor {{ distill.doelgroep_naam or vacancy.title }} — Recruitin.">
+
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id={{ ga4_id|default('G-67PJ02SXVN') }}"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', '{{ ga4_id|default("G-67PJ02SXVN") }}');
+  </script>
+
+  <!-- Meta Pixel -->
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
+    (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '{{ meta_pixel_id|default("238226887541404") }}');
+    fbq('track', 'PageView');
+  </script>
+
+  <style>
+    :root { --brand: #0a3d62; --accent: #d9480f; --bg: #f6f8fa; --warn: #fff8e1; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1a1a1a; margin: 0; line-height: 1.6; }
+    header { background: var(--brand); color: #fff; padding: 32px 20px; }
+    header h1 { margin: 0; font-size: 28px; }
+    header .meta { opacity: 0.85; margin-top: 6px; }
+    main { max-width: 760px; margin: 0 auto; padding: 24px 20px 80px; }
+    h2 { color: var(--brand); border-bottom: 1px solid #d0d7de; padding-bottom: 6px; margin-top: 32px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 16px 0; }
+    .kpi { background: var(--bg); border-left: 4px solid var(--brand); padding: 14px 16px; }
+    .kpi .label { color: #57606a; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi .value { color: var(--brand); font-size: 28px; font-weight: 800; margin: 4px 0; }
+    .kpi .unit  { color: #57606a; font-size: 12px; }
+    .salary { background: var(--warn); border-left: 4px solid var(--accent); padding: 16px 20px; margin: 16px 0; }
+    .salary .bands { font-size: 22px; font-weight: 800; color: var(--accent); }
+    .cta { background: var(--accent); color: #fff; padding: 14px 22px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Doelgroep Rapport</h1>
+    <div class="meta">{{ distill.doelgroep_naam or vacancy.title }}{% if vacancy.company %} &middot; voor {{ vacancy.company }}{% endif %}</div>
+  </header>
+
+  <main>
+    <h2>Key Performance Indicators</h2>
+    <div class="kpi-grid">
+      {% for key, data in (distill.kpis or {}).items() %}
+      <div class="kpi">
+        <div class="label">{{ key.replace("_", " ").title() }}</div>
+        <div class="value">{{ data.value }}</div>
+        <div class="unit">{{ data.unit }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if distill.salary %}
+    <h2>Salarisbenchmark</h2>
+    <div class="salary">
+      <div class="bands">
+        P25 &euro;{{ "{:,}".format(distill.salary.p25 or 0).replace(",", ".") }}
+        &middot; Mediaan &euro;{{ "{:,}".format(distill.salary.median or 0).replace(",", ".") }}
+        &middot; P75 &euro;{{ "{:,}".format(distill.salary.p75 or 0).replace(",", ".") }}
+      </div>
+      {% if distill.salary.note %}<p>{{ distill.salary.note }}</p>{% endif %}
+    </div>
+    {% endif %}
+
+    {% if distill.recommendations %}
+    <h2>Aanbevelingen</h2>
+    <ul>{% for r in distill.recommendations %}<li>{{ r }}</li>{% endfor %}</ul>
+    {% endif %}
+
+    <h2>Volgende stap</h2>
+    <p>Ontvang het volledige doelgroeprapport met segmenten, kanaalstrategie en regionale benchmarks.</p>
+    <p><a href="{{ full_report_cta_url|default('#') }}" class="cta" id="cta-full-report">Vraag volledig rapport aan</a></p>
+  </main>
+
+  <!-- Hot lead detection: identical to vacatura_web -->
+  <script>
+    (function () {
+      let maxScroll = 0;
+      const start = Date.now();
+      let fired = false;
+      function pct() {
+        const h = document.documentElement;
+        return Math.min(100, Math.round((h.scrollTop + window.innerHeight) / h.scrollHeight * 100));
+      }
+      window.addEventListener('scroll', () => { maxScroll = Math.max(maxScroll, pct()); maybeFire(); }, { passive: true });
+      setInterval(maybeFire, 5000);
+      function maybeFire() {
+        if (fired) return;
+        const elapsed = (Date.now() - start) / 1000;
+        if (maxScroll >= 75 && elapsed >= 60) {
+          fired = true;
+          if (window.gtag) gtag('event', 'hot_lead', { page_type: 'doelgroep_web', scroll_pct: maxScroll, time_on_page: Math.round(elapsed) });
+          if (window.fbq)  fbq('trackCustom', 'HotLead', { page_type: 'doelgroep_web' });
+          if ('{{ hot_lead_webhook_url|default("") }}') {
+            fetch('{{ hot_lead_webhook_url }}', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lead_id: '{{ vacancy.id|default("") }}', scroll_pct: maxScroll, time_on_page: Math.round(elapsed) }) }).catch(() => {});
+          }
+        }
+      }
+      document.getElementById('cta-full-report')?.addEventListener('click', () => {
+        if (window.gtag) gtag('event', 'cta_full_report', { page_type: 'doelgroep_web' });
+        if (window.fbq)  fbq('track', 'Lead', { content_name: 'full_report_request' });
+      });
+    })();
+  </script>
+</body>
+</html>
