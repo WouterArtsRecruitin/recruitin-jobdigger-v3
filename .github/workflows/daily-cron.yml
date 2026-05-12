@@ -1,0 +1,69 @@
+name: JobDigger Daily Automation
+
+on:
+  schedule:
+    # 07:00 UTC = 08:00 CET (winter) / 09:00 CEST (summer)
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      lead_batch_size:
+        description: "Override LEAD_BATCH_SIZE for this run"
+        required: false
+        default: ""
+
+concurrency:
+  group: jobdigger-daily
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install WeasyPrint system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b \
+            libfontconfig1 libcairo2
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run daily automation
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL || 'claude-opus-4-7' }}
+          LEMLIST_API_KEY: ${{ secrets.LEMLIST_API_KEY }}
+          LEMLIST_CAMPAIGN_ID: ${{ secrets.LEMLIST_CAMPAIGN_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_BUCKET: ${{ vars.SUPABASE_BUCKET || 'jobdigger-pdfs' }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          LEAD_BATCH_SIZE: ${{ github.event.inputs.lead_batch_size || vars.LEAD_BATCH_SIZE || '20' }}
+        run: python scripts/daily_automation.py
+
+      - name: Upload logs artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-run-logs-${{ github.run_id }}
+          path: logs/
+          retention-days: 7
+
+      - name: Notify Slack on failure
+        if: failure() && env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\":rotating_light: JobDigger daily run FAILED — ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "$SLACK_WEBHOOK_URL"

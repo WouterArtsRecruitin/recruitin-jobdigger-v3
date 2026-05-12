@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <title>Doelgroep Rapport — {{ distill.doelgroep_naam or vacancy.title }}</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    body { font-family: "Helvetica", "Arial", sans-serif; color: #1a1a1a; font-size: 10.5pt; line-height: 1.5; }
+    h1 { color: #0a3d62; font-size: 20pt; margin: 0 0 4pt; }
+    h2 { color: #0a3d62; font-size: 13pt; margin-top: 18pt; border-bottom: 1pt solid #d0d7de; padding-bottom: 4pt; }
+    .meta { color: #57606a; font-size: 9pt; margin-bottom: 16pt; }
+    .kpi-grid { display: table; width: 100%; border-spacing: 6pt; margin: 8pt 0 14pt; }
+    .kpi { display: table-cell; background: #f6f8fa; border-left: 3pt solid #0a3d62; padding: 10pt 12pt; width: 25%; }
+    .kpi .label { color: #57606a; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5pt; }
+    .kpi .value { color: #0a3d62; font-size: 20pt; font-weight: 700; margin: 2pt 0; }
+    .kpi .unit  { color: #57606a; font-size: 9pt; }
+    .salary { background: #fff8e1; padding: 12pt 14pt; border-left: 3pt solid #d9480f; margin: 10pt 0; }
+    .salary .bands { font-size: 18pt; font-weight: 700; color: #d9480f; }
+    table { width: 100%; border-collapse: collapse; margin: 6pt 0 14pt; }
+    th, td { text-align: left; padding: 6pt 8pt; border-bottom: 1pt solid #eaecef; }
+    th { background: #f6f8fa; color: #57606a; font-weight: 600; font-size: 9pt; text-transform: uppercase; letter-spacing: 0.5pt; }
+    ul { padding-left: 16pt; margin: 4pt 0 10pt; }
+    li { margin-bottom: 3pt; }
+    .footer { position: fixed; bottom: 8mm; left: 16mm; right: 16mm; color: #8b949e; font-size: 8pt; border-top: 1pt solid #d0d7de; padding-top: 4pt; }
+  </style>
+</head>
+<body>
+  <h1>Doelgroep Rapport</h1>
+  <div class="meta">
+    <strong>{{ distill.doelgroep_naam or vacancy.title }}</strong>
+    {% if vacancy.company %} &middot; opgesteld voor {{ vacancy.company }}{% endif %}
+  </div>
+
+  <h2>Key Performance Indicators</h2>
+  <div class="kpi-grid">
+    {% for key, data in (distill.kpis or {}).items() %}
+    <div class="kpi">
+      <div class="label">{{ key.replace("_", " ").title() }}</div>
+      <div class="value">{{ data.value }}</div>
+      <div class="unit">{{ data.unit }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if distill.salary %}
+  <h2>Salarisbenchmark (NL bruto/jaar)</h2>
+  <div class="salary">
+    <div class="bands">
+      P25 &euro;{{ "{:,}".format(distill.salary.p25 or 0).replace(",", ".") }}
+      &middot; Mediaan &euro;{{ "{:,}".format(distill.salary.median or 0).replace(",", ".") }}
+      &middot; P75 &euro;{{ "{:,}".format(distill.salary.p75 or 0).replace(",", ".") }}
+    </div>
+    {% if distill.salary.note %}<p style="margin-top:6pt;font-size:9pt;color:#57606a;">{{ distill.salary.note }}</p>{% endif %}
+  </div>
+  {% endif %}
+
+  {% if distill.channels %}
+  <h2>Wervingskanalen</h2>
+  <ul>{% for c in distill.channels %}<li>{{ c }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if distill.scarcity_rating %}
+  <h2>Schaarste-indicatie</h2>
+  <p><strong>{{ distill.scarcity_rating|upper }}</strong></p>
+  {% endif %}
+
+  {% if distill.recommendations %}
+  <h2>Aanbevelingen</h2>
+  <ul>{% for r in distill.recommendations %}<li>{{ r }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  <div class="footer">
+    JobDigger V3 &middot; Recruitin.nl &middot; KPI-bronnen: CBS / UWV / interne data.
+  </div>
+</body>
+</html>
