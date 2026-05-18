@@ -371,6 +371,7 @@ def process_lead(
         "bedrijf": vacancy.get("company", ""),
         "bedrijf_slug": slugify(vacancy.get("company", "")),
         "functietitel": vacancy.get("title", ""),
+        "niveau": vacancy.get("seniority", ""),
         "regio": vacancy.get("location", ""),
         "sector": vacancy.get("sector", ""),
     }
