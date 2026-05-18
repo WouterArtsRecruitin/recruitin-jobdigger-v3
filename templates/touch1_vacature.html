@@ -1,70 +1,282 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8">
-  <title>Vacature Analyse — {{ vacancy.title }} @ {{ vacancy.company }}</title>
-  <style>
-    @page { size: A4; margin: 18mm 16mm; }
-    body { font-family: "Helvetica", "Arial", sans-serif; color: #1a1a1a; font-size: 10.5pt; line-height: 1.5; }
-    h1 { color: #0a3d62; font-size: 20pt; margin: 0 0 4pt; }
-    h2 { color: #0a3d62; font-size: 13pt; margin-top: 18pt; border-bottom: 1pt solid #d0d7de; padding-bottom: 4pt; }
-    .meta { color: #57606a; font-size: 9pt; margin-bottom: 16pt; }
-    .headline { background: #f6f8fa; padding: 12pt 14pt; border-left: 3pt solid #0a3d62; margin: 12pt 0; font-style: italic; }
-    table { width: 100%; border-collapse: collapse; margin: 6pt 0 14pt; }
-    th, td { text-align: left; padding: 6pt 8pt; border-bottom: 1pt solid #eaecef; vertical-align: top; }
-    th { background: #f6f8fa; color: #57606a; font-weight: 600; font-size: 9pt; text-transform: uppercase; letter-spacing: 0.5pt; }
-    .score { font-weight: 700; color: #0a3d62; }
-    .overall { font-size: 28pt; color: #d9480f; font-weight: 700; }
-    ul { padding-left: 16pt; margin: 4pt 0 10pt; }
-    li { margin-bottom: 3pt; }
-    .footer { position: fixed; bottom: 8mm; left: 16mm; right: 16mm; color: #8b949e; font-size: 8pt; border-top: 1pt solid #d0d7de; padding-top: 4pt; }
-  </style>
+<meta charset="UTF-8">
+<title>Vacature Analyse — {{ meta.bedrijf }}</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, sans-serif; color: #1a1a1a; font-size: 10pt; line-height: 1.5; background: white; }
+  .page { width: 210mm; min-height: 297mm; page-break-after: always; position: relative; background: white; }
+  .page:last-child { page-break-after: auto; }
+  .page-inner { padding: 14mm 18mm 25mm 18mm; }
+
+  .top-bar { background: #FF1493; color: white; padding: 6pt 18mm; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.15em; text-transform: uppercase; display: flex; justify-content: space-between; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12pt; }
+  .logo-row { display: flex; align-items: center; gap: 6pt; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 9pt; letter-spacing: 0.1em; color: #1a1a1a; font-weight: 600; }
+  .logo-row::before { content: ""; width: 7pt; height: 7pt; background: #FF1493; border-radius: 50%; display: inline-block; }
+  .page-num-top { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #888; }
+
+  .breadcrumb { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 8pt; }
+  h1.title { font-size: 60pt; font-weight: 800; line-height: 0.95; letter-spacing: -0.04em; margin-bottom: 14pt; }
+  h1.title .accent { color: #FF1493; }
+  .subtitle { font-size: 11pt; color: #444; margin-bottom: 22pt; max-width: 130mm; line-height: 1.5; }
+  .subtitle strong { font-weight: 700; color: #1a1a1a; }
+
+  .exec-summary-card { background: #f5f5f7; border-radius: 8pt; padding: 18pt 22pt; margin-bottom: 18pt; display: flex; gap: 22pt; align-items: center; }
+  .score-circle { width: 80pt; height: 80pt; border-radius: 50%; flex-shrink: 0; position: relative; background: white; }
+  .score-arc-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+  .score-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 1; }
+  .score-number { font-size: 26pt; font-weight: 800; color: #1a1a1a; line-height: 1; }
+  .score-label { font-size: 8pt; color: #666; font-weight: 500; margin-top: 2pt; }
+  .exec-summary-text { flex: 1; }
+  .exec-summary-text .label { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 6pt; }
+  .exec-summary-text p { font-size: 10pt; line-height: 1.55; color: #1a1a1a; }
+
+  .kpi-row { display: flex; gap: 8pt; margin-bottom: 22pt; }
+  .kpi-tile { flex: 1; text-align: center; padding: 16pt 8pt; background: #f5f5f7; border-radius: 6pt; }
+  .kpi-value { font-size: 28pt; font-weight: 800; line-height: 1; margin-bottom: 6pt; }
+  .kpi-value.orange { color: #E8630A; }
+  .kpi-value.green { color: #00B86B; }
+  .kpi-value.pink { color: #FF1493; }
+  .kpi-label { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.12em; color: #555; text-transform: uppercase; line-height: 1.3; }
+
+  .divider { height: 1pt; background: #e0e0e0; margin: 14pt 0; }
+  .arrow-link { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 12pt; }
+  .highlights-row { display: flex; gap: 18pt; }
+  .highlight-col { flex: 1; }
+  .highlight-num { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 4pt; }
+  .highlight-title { font-size: 13pt; font-weight: 700; margin-bottom: 4pt; line-height: 1.2; }
+  .highlight-meta { font-size: 9pt; color: #666; line-height: 1.4; }
+
+  .footer { position: absolute; bottom: 0; left: 0; right: 0; padding: 10pt 18mm; border-top: 3pt solid #FF1493; display: flex; justify-content: space-between; align-items: center; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; }
+  .footer-left strong { color: #FF1493; font-weight: 700; }
+  .footer-right { color: #888; letter-spacing: 0.12em; text-transform: uppercase; }
+
+  .section-label { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 8pt; }
+  h2.section-title { font-size: 24pt; font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 4pt; }
+  .section-subtitle { font-size: 9pt; color: #555; margin-bottom: 12pt; }
+  .insight-card { background: #f5f5f7; border-radius: 8pt; padding: 11pt 16pt; margin-bottom: 8pt; }
+  .insight-header { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 6pt; }
+  .insight-card h3 { font-size: 11pt; font-weight: 700; margin-bottom: 8pt; }
+
+  .score-row { display: flex; align-items: center; gap: 10pt; margin-bottom: 5pt; font-size: 9pt; }
+  .score-row .name { flex: 0 0 130pt; font-weight: 600; }
+  .score-bar { flex: 1; height: 5pt; background: #d8d8d8; border-radius: 3pt; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 3pt; }
+  .score-bar-fill.red { background: #E8630A; }
+  .score-bar-fill.orange { background: #FFA500; }
+  .score-bar-fill.yellow { background: #FFD700; }
+  .score-bar-fill.green { background: #00B86B; }
+  .score-num { flex: 0 0 40pt; text-align: right; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; color: #555; }
+
+  .salary-bar-container { margin-top: 4pt; margin-bottom: 6pt; }
+  .salary-axis { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; color: #888; margin-bottom: 3pt; }
+  .salary-bar { position: relative; height: 16pt; background: #e0e0e0; border-radius: 4pt; }
+  .salary-market-range { position: absolute; height: 100%; background: #FFB3D9; border-radius: 4pt; top: 0; }
+  .salary-comparison { display: flex; gap: 30pt; margin-top: 7pt; font-size: 9pt; }
+  .salary-label { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.1em; color: #888; text-transform: uppercase; margin-bottom: 2pt; }
+  .salary-value { font-weight: 700; color: #1a1a1a; }
+  .salary-warn { margin-top: 6pt; padding: 6pt 8pt; background: #FFF4E5; border-radius: 4pt; font-size: 8pt; color: #8B4513; font-style: italic; }
+  .salary-warn::before { content: "⚠ "; color: #E8630A; }
+
+  .action-item { display: flex; gap: 10pt; padding: 4pt 0; border-bottom: 1px dashed #c8c8c8; font-size: 9pt; line-height: 1.3; }
+  .action-num { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; color: #FF1493; font-weight: 700; flex: 0 0 20pt; }
+  .action-text { flex: 1; }
+  .action-teaser { color: #999; font-style: italic; }
+  .upgrade-badge { background: #FF1493; color: white; padding: 2pt 6pt; border-radius: 3pt; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.1em; margin-left: 4pt; text-transform: uppercase; }
+  .channel-item { padding: 5pt 0; border-top: 1px solid #c8c8c8; display: flex; justify-content: space-between; align-items: center; }
+  .channel-name { font-size: 10pt; font-weight: 700; }
+  .channel-reason { font-size: 8pt; color: #666; }
+  .channel-badge { background: #00B86B; color: white; padding: 3pt 7pt; border-radius: 3pt; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .pre-title { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 10pt; text-align: center; }
+  h2.page3-title { font-size: 32pt; font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 6pt; text-align: center; }
+  h2.page3-title .accent { color: #FF1493; }
+  .page3-subtitle { font-size: 10pt; color: #555; margin-bottom: 22pt; text-align: center; max-width: 130mm; margin-left: auto; margin-right: auto; }
+  .module-list { margin: 18pt 0; }
+  .module-item { display: flex; align-items: center; justify-content: space-between; padding: 10pt 0; border-top: 1px solid #e0e0e0; }
+  .module-item:last-child { border-bottom: 1px solid #e0e0e0; }
+  .module-left { display: flex; gap: 14pt; align-items: center; }
+  .module-num { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; color: #FF1493; font-weight: 700; }
+  .module-name { font-size: 10pt; color: #1a1a1a; font-weight: 600; }
+  .module-lock { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.1em; color: #888; text-transform: uppercase; }
+
+  .stats-row { display: flex; justify-content: center; gap: 14pt; margin: 24pt 0; }
+  .stat-block { background: #f5f5f7; border-radius: 12pt; padding: 16pt 28pt; text-align: center; }
+  .stat-block .num { font-size: 32pt; font-weight: 800; color: #FF1493; line-height: 1; }
+  .stat-block .lbl { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.15em; color: #555; text-transform: uppercase; margin-top: 6pt; }
+
+  .cta-block { text-align: center; margin: 18pt 0 14pt 0; }
+  .cta-btn { display: inline-block; background: #FF1493; color: white; padding: 14pt 40pt; border-radius: 40pt; font-size: 12pt; font-weight: 700; text-decoration: none; margin-bottom: 10pt; }
+  .cta-sub { font-size: 9pt; color: #666; line-height: 1.5; }
+</style>
 </head>
 <body>
-  <h1>Vacature Analyse</h1>
-  <div class="meta">
-    <strong>{{ vacancy.title }}</strong> &middot; {{ vacancy.company }}
-    {% if vacancy.location %} &middot; {{ vacancy.location }}{% endif %}
+
+<!-- ============ PAGE 1 ============ -->
+<div class="page">
+  <div class="top-bar">
+    <span>VOORBEELDRAPPORT · {{ meta.regio | upper }}</span>
+    <span>{{ datum_formatted }}</span>
   </div>
+  <div class="page-inner">
+    <div class="header">
+      <div class="logo-row">KANDIDATENTEKORT.NL</div>
+      <div class="page-num-top">01 / 03</div>
+    </div>
+    <div class="breadcrumb">{{ meta.functietitel | upper }} · {{ meta.sector | upper }} · {{ meta.regio | upper }}</div>
+    <h1 class="title">Vacature<br><span class="accent">Analyse.</span></h1>
+    <p class="subtitle">Hoe presteert deze vacature in de markt? Score, salaris, kanalen — vandaag in 3 pagina's. Volledig rapport: <strong>{{ volledig_rapport.modules }} modules</strong> + complete herschrijving.</p>
 
-  {% if distill.headline %}
-  <div class="headline">{{ distill.headline }}</div>
-  {% endif %}
+    <div class="exec-summary-card">
+      <div class="score-circle">
+        <svg class="score-arc-svg" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="44" fill="none" stroke="#d8d8d8" stroke-width="8"/>
+          <circle cx="50" cy="50" r="44" fill="none" stroke="#E8630A" stroke-width="8"
+                  stroke-dasharray="{{ (score_totaal * 2.764) | round(1) }} 276.4"
+                  stroke-linecap="round"/>
+        </svg>
+        <div class="score-text">
+          <div class="score-number">{{ score_totaal }}</div>
+          <div class="score-label">Score</div>
+        </div>
+      </div>
+      <div class="exec-summary-text">
+        <div class="label">Executive Samenvatting</div>
+        <p>{{ executive_summary }}</p>
+      </div>
+    </div>
 
-  <h2>Overall score</h2>
-  <p class="overall">{{ distill.overall|default("—") }} / 10</p>
+    <div class="kpi-row">
+      <div class="kpi-tile"><div class="kpi-value orange">{{ kpi.concurrerende_vacatures }}</div><div class="kpi-label">Concurrerende<br>Vacatures</div></div>
+      <div class="kpi-tile"><div class="kpi-value green">{{ kpi.kandidaten_in_pool }}</div><div class="kpi-label">Kandidaten in<br>Pool</div></div>
+      <div class="kpi-tile"><div class="kpi-value pink">{{ kpi.mediaan_markt_salaris }}</div><div class="kpi-label">Mediaan Markt</div></div>
+      <div class="kpi-tile"><div class="kpi-value orange">{{ kpi.aanbod_vraag_ratio }}</div><div class="kpi-label">Aanbod / Vraag</div></div>
+    </div>
 
-  <h2>Score per dimensie</h2>
-  <table>
-    <thead><tr><th>Dimensie</th><th>Score</th><th>Onderbouwing</th></tr></thead>
-    <tbody>
-    {% for dim, data in (distill.scores or {}).items() %}
-      <tr>
-        <td>{{ dim.replace("_", " ").title() }}</td>
-        <td class="score">{{ data.score }}/10</td>
-        <td>{{ data.evidence }}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-
-  {% if distill.ideal_candidate %}
-  <h2>Ideale kandidaat</h2>
-  <p>{{ distill.ideal_candidate }}</p>
-  {% endif %}
-
-  {% if distill.talking_points %}
-  <h2>Gesprekspunten</h2>
-  <ul>{% for tp in distill.talking_points %}<li>{{ tp }}</li>{% endfor %}</ul>
-  {% endif %}
-
-  {% if distill.risks %}
-  <h2>Aandachtspunten</h2>
-  <ul>{% for r in distill.risks %}<li>{{ r }}</li>{% endfor %}</ul>
-  {% endif %}
-
+    <div class="divider"></div>
+    <div class="arrow-link">Hoogtepunten op pagina 02 →</div>
+    <div class="highlights-row">
+      <div class="highlight-col">
+        <div class="highlight-num">01 · Sterkste Punt</div>
+        <div class="highlight-title">{{ sterkste_punt.label }}</div>
+        <div class="highlight-meta">{{ sterkste_punt.score }}/100 · {{ sterkste_punt.actie }}</div>
+      </div>
+      <div class="highlight-col">
+        <div class="highlight-num">02 · Zwakste Punt</div>
+        <div class="highlight-title">{{ zwakste_punt.label }}</div>
+        <div class="highlight-meta">{{ zwakste_punt.score }}/100 · {{ zwakste_punt.actie }}</div>
+      </div>
+      <div class="highlight-col">
+        <div class="highlight-num">03 · Salaris</div>
+        <div class="highlight-title">{{ salaris.geboden }}</div>
+        <div class="highlight-meta">Niet vermeld aangeboden</div>
+      </div>
+    </div>
+  </div>
   <div class="footer">
-    JobDigger V3 &middot; Recruitin.nl &middot; Gegenereerd op basis van publieke vacaturedata.
+    <div class="footer-left"><strong>{{ meta.bedrijf }}</strong> · {{ meta.bedrijf_slug | default("voorbeeld") }} · recruitin.nl</div>
+    <div class="footer-right">VOLLEDIG RAPPORT → PAG. 03</div>
   </div>
+</div>
+
+<!-- ============ PAGE 2 ============ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="header">
+      <div class="logo-row">KANDIDATENTEKORT.NL</div>
+      <div class="page-num-top">02 / 03</div>
+    </div>
+    <div class="section-label">Hoogtepunten</div>
+    <h2 class="section-title">Drie inzichten — visueel</h2>
+    <p class="section-subtitle">Categorie-scores, salaris-positie en eerste acties. Het volledige rapport gaat veel dieper.</p>
+
+    <div class="insight-card">
+      <div class="insight-header">01 · Score per categorie</div>
+      <h3>8 dimensies van je vacature</h3>
+      {% for dim_key, dim_score in scores_per_dimensie.items() %}
+      <div class="score-row">
+        <div class="name">{{ dim_labels[dim_key] }}</div>
+        <div class="score-bar"><div class="score-bar-fill {% if dim_score < 40 %}red{% elif dim_score < 60 %}orange{% elif dim_score < 80 %}yellow{% else %}green{% endif %}" style="width: {{ dim_score }}%;"></div></div>
+        <div class="score-num">{{ dim_score }}/100</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-header">02 · Salaris benchmark</div>
+      <h3>Wat bied jij — wat biedt de markt</h3>
+      <div class="salary-bar-container">
+        <div class="salary-axis"><span>€0k</span><span>€7k</span></div>
+        <div class="salary-bar"><div class="salary-market-range" style="left: {{ salary_market_left_pct }}%; width: {{ salary_market_width_pct }}%;"></div></div>
+      </div>
+      <div class="salary-comparison">
+        <div><div class="salary-label">▭ Markt</div><div class="salary-value">{{ salaris.markt_range }}</div></div>
+        <div><div class="salary-label">▮ Jouw aanbod</div><div class="salary-value">{{ salaris.geboden }}</div></div>
+      </div>
+      {% if salaris.waarschuwing %}<div class="salary-warn">{{ salaris.waarschuwing }}</div>{% endif %}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-header">03 · 5 Acties · Top 2 Kanalen</div>
+      <h3>Wat doe je als eerste</h3>
+      {% for action in top_5_acties %}
+      <div class="action-item">
+        <div class="action-num">{{ "%02d" | format(action.nummer) }}</div>
+        <div class="action-text">{% if action.preview %}{{ action.actie }}{% else %}<span class="action-teaser">{{ action.teaser }}</span><span class="upgrade-badge">In Volledig Rapport</span>{% endif %}</div>
+      </div>
+      {% endfor %}
+      {% for channel in top_2_kanalen %}
+      <div class="channel-item">
+        <div><div class="channel-name">{{ channel.naam }}</div><div class="channel-reason">{{ channel.reden }}</div></div>
+        <div class="channel-badge">{{ channel.label }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="footer">
+    <div class="footer-right">VOORBEELD · RECRUITIN B.V.</div>
+    <div class="footer-right">02 / 03</div>
+  </div>
+</div>
+
+<!-- ============ PAGE 3 ============ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="header">
+      <div class="logo-row">KANDIDATENTEKORT.NL</div>
+      <div class="page-num-top">03 / 03</div>
+    </div>
+    <div class="pre-title">Voor jouw eigen vacature</div>
+    <h2 class="page3-title">Wat krijg je in het<br><span class="accent">volledige rapport?</span></h2>
+    <p class="page3-subtitle">Dit voorbeeld toont 3 hoogtepunten. Het volledige rapport heeft <strong>{{ volledig_rapport.modules }} modules</strong> + complete herschrijving — hieronder de complete inhoud:</p>
+
+    <div class="module-list">
+      {% for module in volledig_rapport.modules_lijst %}
+      <div class="module-item">
+        <div class="module-left"><span class="module-num">{{ "%02d" | format(loop.index) }}</span><span class="module-name">{{ module }}</span></div>
+        <span class="module-lock">— IN VOLLEDIG RAPPORT</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-block"><div class="num">{{ volledig_rapport.modules }}</div><div class="lbl">Modules</div></div>
+      <div class="stat-block"><div class="num">{{ volledig_rapport.levertijd }}</div><div class="lbl">Levertijd</div></div>
+      <div class="stat-block"><div class="num">1</div><div class="lbl">Gratis Analyse</div></div>
+    </div>
+
+    <div class="cta-block">
+      <a href="{{ tracking.cta_url }}" class="cta-btn">Krijg jouw rapport in 2u →</a>
+      <div class="cta-sub">Eerste analyse gratis · geen creditcard · rapport in je mailbox binnen 2u</div>
+    </div>
+  </div>
+  <div class="footer">
+    <div class="footer-left"><strong>Recruitin B.V.</strong> · warts@recruitin.nl · 06 14 31 45 93 · kandidatentekort.nl</div>
+    <div class="footer-right">03 / 03</div>
+  </div>
+</div>
+
 </body>
 </html>

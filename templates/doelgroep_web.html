@@ -1,119 +1,393 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Doelgroep Rapport — {{ distill.doelgroep_naam or vacancy.title }} | doelgroepenrapport.nl</title>
-  <meta name="description" content="Doelgroep-rapport voor {{ distill.doelgroep_naam or vacancy.title }} — Recruitin.">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Doelgroepen Rapport — {{ meta.functietitel }} {{ meta.regio }} | Doelgroepenrapport.nl</title>
+<meta name="description" content="Doelgroep analyse voor {{ meta.functietitel }} in {{ meta.regio }}. Talent pool, schaarste, kanalen.">
 
-  <!-- Google Analytics 4 -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id={{ ga4_id|default('G-67PJ02SXVN') }}"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', '{{ ga4_id|default("G-67PJ02SXVN") }}');
-  </script>
+<meta property="og:title" content="Doelgroepen Rapport — {{ meta.functietitel }}">
+<meta property="og:description" content="Schaarste {{ kpi.schaarste_label }} · Talent pool {{ kpi.talent_pool_label }} · Time-to-fill {{ kpi.time_to_fill_label }}">
 
-  <!-- Meta Pixel -->
-  <script>
-    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
-    (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '{{ meta_pixel_id|default("238226887541404") }}');
-    fbq('track', 'PageView');
-  </script>
+<!-- GA4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-67PJ02SXVN"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-67PJ02SXVN', {
+    'page_title': 'Doelgroep Rapport — {{ meta.functietitel }}',
+    'page_path': '/r/{{ tracking.token }}/doelgroep'
+  });
+  gtag('event', 'page_view', {
+    'lead_token': '{{ tracking.token }}',
+    'bedrijf': '{{ meta.bedrijf }}',
+    'sector': '{{ meta.sector }}',
+    'regio': '{{ meta.regio }}',
+    'rapport_type': 'doelgroep_analyse',
+    'schaarste': {{ kpi.schaarste }},
+    'haalbaarheid_score': {{ haalbaarheid_score }}
+  });
+</script>
 
-  <style>
-    :root { --brand: #0a3d62; --accent: #d9480f; --bg: #f6f8fa; --warn: #fff8e1; }
-    * { box-sizing: border-box; }
-    body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1a1a1a; margin: 0; line-height: 1.6; }
-    header { background: var(--brand); color: #fff; padding: 32px 20px; }
-    header h1 { margin: 0; font-size: 28px; }
-    header .meta { opacity: 0.85; margin-top: 6px; }
-    main { max-width: 760px; margin: 0 auto; padding: 24px 20px 80px; }
-    h2 { color: var(--brand); border-bottom: 1px solid #d0d7de; padding-bottom: 6px; margin-top: 32px; }
-    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 16px 0; }
-    .kpi { background: var(--bg); border-left: 4px solid var(--brand); padding: 14px 16px; }
-    .kpi .label { color: #57606a; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .kpi .value { color: var(--brand); font-size: 28px; font-weight: 800; margin: 4px 0; }
-    .kpi .unit  { color: #57606a; font-size: 12px; }
-    .salary { background: var(--warn); border-left: 4px solid var(--accent); padding: 16px 20px; margin: 16px 0; }
-    .salary .bands { font-size: 22px; font-weight: 800; color: var(--accent); }
-    .cta { background: var(--accent); color: #fff; padding: 14px 22px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; }
-  </style>
+<!-- Meta Pixel -->
+<script>
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+  n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+  document,'script','https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '238226887541404');
+  fbq('track', 'PageView');
+  fbq('trackCustom', 'ViewDoelgroepRapport', {
+    lead_token: '{{ tracking.token }}',
+    bedrijf: '{{ meta.bedrijf }}',
+    sector: '{{ meta.sector }}',
+    regio: '{{ meta.regio }}',
+    schaarste: {{ kpi.schaarste }}
+  });
+</script>
+<noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=238226887541404&ev=PageView&noscript=1"/></noscript>
+
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Inter', -apple-system, sans-serif; color: #1a1a1a; line-height: 1.5; background: white; }
+
+  .sticky-bar {
+    position: sticky; top: 0; z-index: 100;
+    background: #FF1493; color: white;
+    padding: 8px 24px;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .container { max-width: 800px; margin: 0 auto; padding: 32px 24px 80px 24px; }
+  @media (max-width: 640px) { .container { padding: 24px 16px 60px 16px; } }
+
+  .top-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e0e0e0;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 13px; letter-spacing: 0.1em; color: #1a1a1a; font-weight: 600;
+  }
+  .logo::before { content: ""; width: 10px; height: 10px; background: #FF1493; border-radius: 50%; }
+  .meta-info { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 11px; color: #666; letter-spacing: 0.1em; }
+
+  .breadcrumb { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 12px; letter-spacing: 0.15em; color: #888; text-transform: uppercase; margin-bottom: 12px; }
+  h1 { font-size: 64px; font-weight: 800; line-height: 0.95; letter-spacing: -0.03em; margin-bottom: 16px; }
+  h1 .accent { color: #FF1493; }
+  @media (max-width: 640px) { h1 { font-size: 44px; } }
+  .subtitle { font-size: 16px; color: #444; margin-bottom: 32px; line-height: 1.6; }
+  .subtitle strong { font-weight: 700; color: #1a1a1a; }
+
+  .score-card {
+    background: #f5f5f7; border-radius: 12px; padding: 28px; margin-bottom: 24px;
+    display: flex; gap: 28px; align-items: center;
+  }
+  @media (max-width: 640px) { .score-card { flex-direction: column; text-align: center; gap: 16px; padding: 20px; } }
+  .score-circle { width: 110px; height: 110px; border-radius: 50%; flex-shrink: 0; position: relative; background: white; }
+  .score-arc { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+  .score-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+  .score-number { font-size: 36px; font-weight: 800; color: #1a1a1a; line-height: 1; }
+  .score-label { font-size: 11px; color: #666; font-weight: 500; margin-top: 4px; }
+  .score-body { flex: 1; }
+  .score-body .label { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 11px; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 8px; }
+  .score-body p { font-size: 14px; line-height: 1.6; color: #1a1a1a; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+  @media (max-width: 640px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: #f5f5f7; border-radius: 10px; padding: 20px 12px; text-align: center; }
+  .kpi-value { font-size: 32px; font-weight: 800; line-height: 1; margin-bottom: 8px; color: #1a1a1a; }
+  .kpi-value.pink { color: #FF1493; }
+  .kpi-value.orange { color: #E8630A; }
+  .kpi-value.green { color: #00B86B; }
+  .kpi-label { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 10px; letter-spacing: 0.1em; color: #555; text-transform: uppercase; line-height: 1.3; }
+
+  .section { margin-bottom: 32px; }
+  .section-label { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 11px; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 10px; }
+  h2 { font-size: 32px; font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .section-subtitle { font-size: 14px; color: #555; margin-bottom: 20px; }
+
+  .insight-card { background: #f5f5f7; border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; }
+  .insight-header { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 11px; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 12px; }
+  .insight-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 14px; }
+
+  /* Salary bars */
+  .salary-bar-row { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+  .salary-niveau { flex: 0 0 70px; font-weight: 600; font-size: 14px; }
+  .salary-bar-wrapper { flex: 1; height: 20px; background: #e0e0e0; border-radius: 10px; position: relative; }
+  .salary-range-bar { position: absolute; height: 100%; background: #FFB3D9; border-radius: 10px; }
+  .salary-median-mark { position: absolute; top: -3px; width: 5px; height: 26px; background: #1a1a1a; border-radius: 2px; }
+  .salary-range-label { flex: 0 0 150px; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 12px; color: #666; text-align: right; }
+  @media (max-width: 640px) {
+    .salary-bar-row { flex-wrap: wrap; }
+    .salary-range-label { flex: 1 1 100%; text-align: left; padding-left: 84px; margin-top: 4px; }
+  }
+  .salary-range-label strong { color: #1a1a1a; font-weight: 700; }
+  .market-shortage { margin-top: 16px; padding-top: 12px; border-top: 1px solid #c8c8c8; font-size: 14px; color: #555; }
+  .market-shortage strong { color: #1a1a1a; }
+  .trend-up { color: #FF1493; font-weight: 700; }
+
+  /* Channel rows */
+  .channel-row { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid #c8c8c8; flex-wrap: wrap; }
+  .channel-row:first-of-type { border-top: none; padding-top: 8px; }
+  .channel-info { flex: 1; min-width: 200px; }
+  .channel-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .channel-meta { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 11px; color: #888; letter-spacing: 0.05em; text-transform: uppercase; }
+  .channel-bar-container { flex: 0 0 180px; height: 10px; background: #e0e0e0; border-radius: 5px; overflow: hidden; }
+  .channel-bar-fill { height: 100%; background: #FF1493; border-radius: 5px; transition: width 0.6s ease; }
+  .channel-score { flex: 0 0 40px; text-align: right; font-family: 'JetBrains Mono', 'Courier New', monospace; font-weight: 700; color: #1a1a1a; font-size: 16px; }
+
+  /* Pressure */
+  .pressure-bar { height: 20px; border-radius: 10px; background: linear-gradient(90deg, #00B86B 0%, #FFD700 40%, #FFA500 65%, #FF1493 90%, #C41E3A 100%); position: relative; margin: 14px 0 10px 0; }
+  .pressure-marker { position: absolute; top: -4px; width: 6px; height: 28px; background: #1a1a1a; border-radius: 3px; }
+  .pressure-axis { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 11px; color: #888; letter-spacing: 0.1em; }
+  .pressure-center { text-align: center; font-weight: 700; color: #1a1a1a; font-size: 13px; }
+  .pressure-detail { margin-top: 14px; padding-top: 10px; border-top: 1px solid #c8c8c8; font-size: 14px; color: #555; }
+  .pressure-detail strong { color: #1a1a1a; }
+  .premium-badge { color: #FF1493; font-weight: 700; }
+
+  /* Upgrade block */
+  .upgrade-block {
+    background: linear-gradient(135deg, #FF1493 0%, #FF6BB5 100%);
+    color: white; border-radius: 16px; padding: 40px 32px; text-align: center; margin: 40px 0;
+  }
+  .upgrade-block h2 { color: white; font-size: 32px; margin-bottom: 12px; }
+  .upgrade-block p { font-size: 16px; opacity: 0.95; margin-bottom: 24px; line-height: 1.6; }
+  .upgrade-stats { display: flex; justify-content: center; gap: 32px; margin: 24px 0; flex-wrap: wrap; }
+  .upgrade-stat .n { font-size: 40px; font-weight: 800; line-height: 1; color: white; }
+  .upgrade-stat .l { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 11px; letter-spacing: 0.15em; margin-top: 4px; text-transform: uppercase; opacity: 0.9; }
+  .cta-btn { display: inline-block; background: white; color: #FF1493; padding: 18px 48px; border-radius: 50px; font-size: 16px; font-weight: 700; text-decoration: none; transition: transform 0.2s; margin-bottom: 12px; }
+  .cta-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+  .cta-sub { font-size: 13px; opacity: 0.9; }
+
+  .module-list { background: #f5f5f7; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+  .module-list h3 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+  .module-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e0e0e0; gap: 12px; }
+  .module-item:last-child { border-bottom: none; }
+  .module-left { display: flex; gap: 14px; align-items: center; flex: 1; }
+  .module-num { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 12px; color: #FF1493; font-weight: 700; flex-shrink: 0; }
+  .module-name { font-size: 14px; font-weight: 600; }
+  .module-lock { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 10px; letter-spacing: 0.1em; color: #888; text-transform: uppercase; flex-shrink: 0; }
+
+  footer { border-top: 4px solid #FF1493; padding: 24px; text-align: center; margin-top: 60px; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 11px; letter-spacing: 0.05em; color: #666; }
+  footer strong { color: #FF1493; font-weight: 700; }
+  footer a { color: #FF1493; text-decoration: none; }
+</style>
 </head>
 <body>
-  <header>
-    <h1>Doelgroep Rapport</h1>
-    <div class="meta">{{ distill.doelgroep_naam or vacancy.title }}{% if vacancy.company %} &middot; voor {{ vacancy.company }}{% endif %}</div>
-  </header>
 
-  <main>
-    <h2>Key Performance Indicators</h2>
-    <div class="kpi-grid">
-      {% for key, data in (distill.kpis or {}).items() %}
-      <div class="kpi">
-        <div class="label">{{ key.replace("_", " ").title() }}</div>
-        <div class="value">{{ data.value }}</div>
-        <div class="unit">{{ data.unit }}</div>
+<div class="sticky-bar">
+  <span>DOELGROEP RAPPORT · {{ meta.regio | upper }}</span>
+  <span>{{ datum_formatted }}</span>
+</div>
+
+<div class="container">
+
+  <div class="top-header">
+    <div class="logo">DOELGROEPENRAPPORT.NL</div>
+    <div class="meta-info">VOORBEELDRAPPORT 01/03</div>
+  </div>
+
+  <div class="breadcrumb">{{ meta.niveau | upper }} · {{ meta.functietitel | upper }} · {{ meta.sector | upper }} · {{ meta.regio | upper }}</div>
+  <h1>Doelgroepen<br><span class="accent">Rapport.</span></h1>
+  <p class="subtitle">Vraag, salaris, schaarste en kanalen voor <strong>{{ meta.functietitel }}</strong> in <strong>{{ meta.regio }}</strong>. Volledig rapport: <strong>{{ volledig_rapport.modules }} modules</strong> op basis van <strong>{{ volledig_rapport.bronnen }} bronnen</strong>.</p>
+
+  <div class="score-card">
+    <div class="score-circle">
+      <svg class="score-arc" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="44" fill="none" stroke="#d8d8d8" stroke-width="8"/>
+        <circle cx="50" cy="50" r="44" fill="none" stroke="#FF1493" stroke-width="8"
+                stroke-dasharray="{{ (haalbaarheid_score * 2.764) | round(1) }} 276.4"
+                stroke-linecap="round"/>
+      </svg>
+      <div class="score-text">
+        <div class="score-number">{{ haalbaarheid_score }}</div>
+        <div class="score-label">{{ haalbaarheid_label }}</div>
+      </div>
+    </div>
+    <div class="score-body">
+      <div class="label">Executive Samenvatting</div>
+      <p>{{ executive_summary }}</p>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-value">{{ kpi.talent_pool_label }}</div><div class="kpi-label">Talent Pool</div></div>
+    <div class="kpi"><div class="kpi-value pink">{{ kpi.schaarste_label }}</div><div class="kpi-label">Schaarste</div></div>
+    <div class="kpi"><div class="kpi-value orange">{{ kpi.time_to_fill_label }}</div><div class="kpi-label">Time-to-Fill</div></div>
+    <div class="kpi"><div class="kpi-value green">{{ kpi.actief_label }}</div><div class="kpi-label">Actief</div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Hoogtepunten</div>
+    <h2>Drie inzichten — visueel</h2>
+    <p class="section-subtitle">Salaris-ranges, kanaal-effectiviteit en marktdruk in een oogopslag.</p>
+
+    <!-- Salary -->
+    <div class="insight-card">
+      <div class="insight-header">01 · Salaris benchmark ({{ salaris_benchmark.valuta_eenheid }})</div>
+      {% for niveau_key, niveau_data in [('junior', salaris_benchmark.junior), ('medior', salaris_benchmark.medior), ('senior', salaris_benchmark.senior)] %}
+      <div class="salary-bar-row">
+        <div class="salary-niveau">{{ niveau_key | capitalize }}</div>
+        <div class="salary-bar-wrapper">
+          <div class="salary-range-bar" style="left: {{ (niveau_data.min / 70) | round(1) }}%; width: {{ ((niveau_data.max - niveau_data.min) / 70) | round(1) }}%;"></div>
+          <div class="salary-median-mark" style="left: {{ (niveau_data.median / 70) | round(1) }}%;"></div>
+        </div>
+        <div class="salary-range-label">{{ niveau_data.label }}</div>
+      </div>
+      {% endfor %}
+      <div class="market-shortage"><strong>Markttekort:</strong> {{ salaris_benchmark.markttekort.label }} · trend <span class="trend-up">{{ salaris_benchmark.markttekort.trend }}</span></div>
+    </div>
+
+    <!-- Channels -->
+    <div class="insight-card">
+      <div class="insight-header">02 · Top wervingskanalen — effectiviteit /10</div>
+      {% for channel in top_wervingskanalen %}
+      <div class="channel-row">
+        <div class="channel-info">
+          <div class="channel-name">{{ channel.naam }}</div>
+          <div class="channel-meta">{{ channel.kosten }}{% if channel.context %} ({{ channel.context }}){% endif %} · {{ channel.respons_tijd }}</div>
+        </div>
+        <div class="channel-bar-container"><div class="channel-bar-fill" style="width: {{ (channel.score * 10) | round(0) }}%;"></div></div>
+        <div class="channel-score">{{ channel.score_label }}</div>
       </div>
       {% endfor %}
     </div>
 
-    {% if distill.salary %}
-    <h2>Salarisbenchmark</h2>
-    <div class="salary">
-      <div class="bands">
-        P25 &euro;{{ "{:,}".format(distill.salary.p25 or 0).replace(",", ".") }}
-        &middot; Mediaan &euro;{{ "{:,}".format(distill.salary.median or 0).replace(",", ".") }}
-        &middot; P75 &euro;{{ "{:,}".format(distill.salary.p75 or 0).replace(",", ".") }}
+    <!-- Market pressure -->
+    <div class="insight-card">
+      <div class="insight-header">03 · Marktdruk-index</div>
+      <div class="pressure-bar"><div class="pressure-marker" style="left: {{ (marktdruk_index.score * 10) | round(0) }}%;"></div></div>
+      <div class="pressure-axis">
+        <span>0 · LAAG</span>
+        <span class="pressure-center">{{ marktdruk_index.score_label }}</span>
+        <span>10 · EXTREEM</span>
       </div>
-      {% if distill.salary.note %}<p>{{ distill.salary.note }}</p>{% endif %}
+      <div class="pressure-detail"><strong>Top concurrent:</strong> {{ marktdruk_index.top_concurrent.naam }} ({{ marktdruk_index.top_concurrent.regio_actief }}) · <span class="premium-badge">{{ marktdruk_index.top_concurrent.salarispremie }} salarispremie</span> · <strong>{{ marktdruk_index.top_concurrent.aantal_top_spelers }}</strong> top spelers in regio</div>
     </div>
-    {% endif %}
+  </div>
 
-    {% if distill.recommendations %}
-    <h2>Aanbevelingen</h2>
-    <ul>{% for r in distill.recommendations %}<li>{{ r }}</li>{% endfor %}</ul>
-    {% endif %}
+  <!-- UPGRADE CTA -->
+  <div class="upgrade-block">
+    <h2>Wat krijg je in het volledige rapport?</h2>
+    <p>Dit is een teaser. Het volledige rapport heeft <strong>{{ volledig_rapport.modules }} modules</strong> op basis van <strong>{{ volledig_rapport.bronnen }} bronnen</strong>.</p>
+    <div class="upgrade-stats">
+      <div class="upgrade-stat"><div class="n">{{ volledig_rapport.bronnen }}</div><div class="l">Bronnen</div></div>
+      <div class="upgrade-stat"><div class="n">{{ volledig_rapport.modules }}</div><div class="l">Modules</div></div>
+      <div class="upgrade-stat"><div class="n">{{ volledig_rapport.levertijd }}</div><div class="l">Levertijd</div></div>
+    </div>
+    <a href="mailto:warts@recruitin.nl?subject=Volledig doelgroep rapport — {{ meta.functietitel }} {{ meta.regio }}&body=Hoi Wouter,%0D%0A%0D%0AIk wil graag het volledige doelgroep rapport voor {{ meta.functietitel }} in {{ meta.regio }}.%0D%0A%0D%0ARef: {{ tracking.token }}"
+       class="cta-btn"
+       onclick="trackPrimaryCTA('hero_upgrade')">
+      Vraag rapport aan →
+    </a>
+    <div class="cta-sub">Eerste 2 rapporten gratis · geen creditcard · in je mailbox binnen 24u</div>
+  </div>
 
-    <h2>Volgende stap</h2>
-    <p>Ontvang het volledige doelgroeprapport met segmenten, kanaalstrategie en regionale benchmarks.</p>
-    <p><a href="{{ full_report_cta_url|default('#') }}" class="cta" id="cta-full-report">Vraag volledig rapport aan</a></p>
-  </main>
+  <div class="module-list">
+    <h3>Volledige inhoud (12 modules)</h3>
+    {% for module in volledig_rapport.modules_lijst %}
+    <div class="module-item">
+      <div class="module-left"><span class="module-num">{{ "%02d" | format(loop.index + 1) }}</span><span class="module-name">{{ module }}</span></div>
+      <span class="module-lock">🔒 IN VOLLEDIG RAPPORT</span>
+    </div>
+    {% endfor %}
+  </div>
 
-  <!-- Hot lead detection: identical to vacatura_web -->
-  <script>
-    (function () {
-      let maxScroll = 0;
-      const start = Date.now();
-      let fired = false;
-      function pct() {
-        const h = document.documentElement;
-        return Math.min(100, Math.round((h.scrollTop + window.innerHeight) / h.scrollHeight * 100));
+  <div style="text-align: center; margin-top: 40px;">
+    <a href="mailto:warts@recruitin.nl?subject=Vraag — {{ meta.functietitel }} {{ meta.regio }}&body=Ref: {{ tracking.token }}"
+       style="color: #FF1493; font-weight: 700; text-decoration: none; font-size: 15px;"
+       onclick="trackSecondaryCTA('footer_contact')">
+      Of bel direct: <strong>06 14 31 45 93</strong> →
+    </a>
+  </div>
+
+</div>
+
+<footer>
+  <strong>Recruitin B.V.</strong> · <a href="mailto:warts@recruitin.nl">warts@recruitin.nl</a> · 06 14 31 45 93 · <a href="https://doelgroepenrapport.nl">doelgroepenrapport.nl</a><br><br>
+  <span style="color: #aaa;">Dit rapport is gemaakt op basis van publieke data. Ref: {{ tracking.token }}</span>
+</footer>
+
+<script>
+  // Scroll tracking
+  let maxScroll = 0;
+  let scrollMilestones = { 25: false, 50: false, 75: false, 100: false };
+  window.addEventListener('scroll', function() {
+    const winHeight = window.innerHeight;
+    const docHeight = document.documentElement.scrollHeight - winHeight;
+    const scrollPct = Math.round((window.scrollY / docHeight) * 100);
+    if (scrollPct > maxScroll) maxScroll = scrollPct;
+    Object.keys(scrollMilestones).forEach(function(milestone) {
+      const m = parseInt(milestone);
+      if (scrollPct >= m && !scrollMilestones[m]) {
+        scrollMilestones[m] = true;
+        gtag('event', 'scroll_depth', {
+          'lead_token': '{{ tracking.token }}',
+          'depth_pct': m,
+          'rapport_type': 'doelgroep_analyse'
+        });
+        fbq('trackCustom', 'ScrollDepth_' + m, { lead_token: '{{ tracking.token }}' });
       }
-      window.addEventListener('scroll', () => { maxScroll = Math.max(maxScroll, pct()); maybeFire(); }, { passive: true });
-      setInterval(maybeFire, 5000);
-      function maybeFire() {
-        if (fired) return;
-        const elapsed = (Date.now() - start) / 1000;
-        if (maxScroll >= 75 && elapsed >= 60) {
-          fired = true;
-          if (window.gtag) gtag('event', 'hot_lead', { page_type: 'doelgroep_web', scroll_pct: maxScroll, time_on_page: Math.round(elapsed) });
-          if (window.fbq)  fbq('trackCustom', 'HotLead', { page_type: 'doelgroep_web' });
-          if ('{{ hot_lead_webhook_url|default("") }}') {
-            fetch('{{ hot_lead_webhook_url }}', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lead_id: '{{ vacancy.id|default("") }}', scroll_pct: maxScroll, time_on_page: Math.round(elapsed) }) }).catch(() => {});
-          }
-        }
+    });
+  });
+
+  // Time tracking
+  let timeMilestones = { 15: false, 30: false, 60: false, 120: false };
+  let startTime = Date.now();
+  setInterval(function() {
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    Object.keys(timeMilestones).forEach(function(milestone) {
+      const m = parseInt(milestone);
+      if (elapsed >= m && !timeMilestones[m]) {
+        timeMilestones[m] = true;
+        gtag('event', 'time_on_page', {
+          'lead_token': '{{ tracking.token }}',
+          'seconds': m,
+          'rapport_type': 'doelgroep_analyse'
+        });
       }
-      document.getElementById('cta-full-report')?.addEventListener('click', () => {
-        if (window.gtag) gtag('event', 'cta_full_report', { page_type: 'doelgroep_web' });
-        if (window.fbq)  fbq('track', 'Lead', { content_name: 'full_report_request' });
-      });
-    })();
-  </script>
+    });
+  }, 5000);
+
+  function trackPrimaryCTA(location) {
+    gtag('event', 'cta_click', {
+      'lead_token': '{{ tracking.token }}',
+      'cta_type': 'primary_upgrade',
+      'location': location,
+      'rapport_type': 'doelgroep_analyse'
+    });
+    fbq('track', 'Lead', { lead_token: '{{ tracking.token }}', cta: 'primary' });
+    fbq('trackCustom', 'HotLeadSignal', {
+      lead_token: '{{ tracking.token }}',
+      bedrijf: '{{ meta.bedrijf }}',
+      schaarste: {{ kpi.schaarste }}
+    });
+  }
+  function trackSecondaryCTA(location) {
+    gtag('event', 'cta_click', { 'lead_token': '{{ tracking.token }}', 'cta_type': 'secondary', 'location': location });
+    fbq('trackCustom', 'SecondaryCTA', { lead_token: '{{ tracking.token }}', location: location });
+  }
+
+  let exitTracked = false;
+  document.addEventListener('mouseleave', function(e) {
+    if (e.clientY <= 0 && !exitTracked) {
+      exitTracked = true;
+      gtag('event', 'exit_intent', { 'lead_token': '{{ tracking.token }}', 'max_scroll': maxScroll });
+    }
+  });
+</script>
+
 </body>
 </html>
