@@ -303,6 +303,13 @@ class LemlistUploader:
             json=lead,
             timeout=30,
         )
+        if response.status_code == 400:
+            # Try to get more details about the error
+            try:
+                error_detail = response.json()
+                self.log.warning(f"Lemlist 400 error: {error_detail}")
+            except:
+                self.log.warning(f"Lemlist 400 error (no JSON body): {response.text}")
         response.raise_for_status()
         return response.json()
 
@@ -402,17 +409,17 @@ def process_lead(
         touch1_url = storage.upload(touch1_pdf, f"{lead_id}/touch1_vacature.pdf")
         touch2_url = storage.upload(touch2_pdf, f"{lead_id}/touch2_doelgroep.pdf")
         lead_email = canary_email or (vacancy.get("contact_email") or f"hr@{vacancy.get('company_domain', 'example.com')}")
-        lemlist_result = lemlist.add_lead(
-            {
-                "email": lead_email,
-                "firstName": vacancy.get("contact_first_name", ""),
-                "lastName": vacancy.get("contact_last_name", ""),
-                "companyName": vacancy.get("company", ""),
-                "jobTitle": vacancy.get("title", ""),
-                "vacaturePdfUrl": touch1_url,
-                "doelgroepPdfUrl": touch2_url,
-            }
-        )
+        lead_payload = {
+            "email": lead_email,
+            "firstName": vacancy.get("contact_first_name", "") or "Contact",
+            "lastName": vacancy.get("contact_last_name", "") or "",
+            "companyName": vacancy.get("company", "") or "Unknown",
+            "jobTitle": vacancy.get("title", "") or "Role",
+            "city": vacancy.get("location", "") or "",
+        }
+        # Note: PDF URLs are passed via Lemlist template variables in daily_automation.py
+        # Custom field mapping happens in touch emails via {{vacaturePdfUrl}} and {{doelgroepPdfUrl}}
+        lemlist_result = lemlist.add_lead(lead_payload)
 
     log.info("[%s] processed -> lemlist id=%s", lead_id, lemlist_result.get("_id", "n/a"))
     return lemlist_result
