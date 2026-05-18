@@ -57,6 +57,7 @@ jobs:
           SUPABASE_BUCKET: ${{ vars.SUPABASE_BUCKET || 'jobdigger-pdfs' }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           LEAD_BATCH_SIZE: ${{ github.event.inputs.lead_batch_size || vars.LEAD_BATCH_SIZE || '20' }}
+          CANARY_EMAIL: ${{ vars.CANARY_EMAIL || '' }}
         run: python scripts/daily_automation.py
 
       - name: Upload logs artifact
