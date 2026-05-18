@@ -38,6 +38,14 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
+      - name: Prepare test data (if no scraper output exists)
+        run: |
+          mkdir -p data
+          if [ ! -f data/daily_vacancies.json ]; then
+            cp test/fixtures/sample_vacancies.json data/daily_vacancies.json
+            echo "Using test fixture for this run"
+          fi
+
       - name: Run daily automation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
