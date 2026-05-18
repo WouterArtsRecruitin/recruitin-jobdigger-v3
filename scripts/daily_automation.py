@@ -51,6 +51,7 @@ class Config:
     vacancies_path: Path
     pdf_dir: Path
     log_dir: Path
+    canary_email: str | None = None
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -77,6 +78,7 @@ class Config:
             ),
             pdf_dir=ROOT / os.environ.get("PDF_OUTPUT_DIR", "storage/pdfs"),
             log_dir=ROOT / os.environ.get("LOG_DIR", "logs"),
+            canary_email=os.environ.get("CANARY_EMAIL") or None,
         )
 
 
@@ -348,6 +350,7 @@ def process_lead(
     lemlist: LemlistUploader,
     log: logging.Logger,
     dry_run: bool = False,
+    canary_email: str | None = None,
 ) -> dict[str, Any]:
     lead_id = vacancy.get("id") or slugify(
         f"{vacancy.get('company', 'unknown')}_{vacancy.get('title', 'role')}"
@@ -398,9 +401,10 @@ def process_lead(
     else:
         touch1_url = storage.upload(touch1_pdf, f"{lead_id}/touch1_vacature.pdf")
         touch2_url = storage.upload(touch2_pdf, f"{lead_id}/touch2_doelgroep.pdf")
+        lead_email = canary_email or (vacancy.get("contact_email") or f"hr@{vacancy.get('company_domain', 'example.com')}")
         lemlist_result = lemlist.add_lead(
             {
-                "email": vacancy.get("contact_email") or f"hr@{vacancy.get('company_domain', 'example.com')}",
+                "email": lead_email,
                 "firstName": vacancy.get("contact_first_name", ""),
                 "lastName": vacancy.get("contact_last_name", ""),
                 "companyName": vacancy.get("company", ""),
@@ -422,7 +426,8 @@ def run() -> int:
     cfg = Config.from_env()
     log = setup_logging(cfg.log_dir)
     mode = "DRY-RUN" if args.dry_run else "LIVE"
-    log.info("JobDigger V3 daily run starting [%s] (model=%s, batch=%d)", mode, cfg.claude_model, cfg.lead_batch_size)
+    canary_note = f" (CANARY → {cfg.canary_email})" if cfg.canary_email else ""
+    log.info("JobDigger V3 daily run starting [%s]%s (model=%s, batch=%d)", mode, canary_note, cfg.claude_model, cfg.lead_batch_size)
 
     loader = VacancyLoader(cfg.vacancies_path, log)
     icp = ICPFilter(log)
@@ -440,7 +445,7 @@ def run() -> int:
     for vacancy in selected:
         stats.processed += 1
         try:
-            process_lead(vacancy, prompts, pdfgen, storage, lemlist, log, dry_run=args.dry_run)
+            process_lead(vacancy, prompts, pdfgen, storage, lemlist, log, dry_run=args.dry_run, canary_email=cfg.canary_email)
             stats.succeeded += 1
         except Exception as exc:
             stats.failed += 1
