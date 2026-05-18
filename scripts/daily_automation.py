@@ -304,7 +304,12 @@ class LemlistUploader:
             timeout=30,
         )
         if response.status_code == 400:
-            # Try to get more details about the error
+            # Lead already in campaign — return a benign response
+            error_text = response.text.lower()
+            if "already" in error_text or "exists" in error_text:
+                self.log.info(f"Lead {lead['email']} already in campaign (non-fatal)")
+                return {"_id": f"existing-{lead['email']}", "status": "already_exists"}
+            # Other 400 errors are fatal
             try:
                 error_detail = response.json()
                 self.log.warning(f"Lemlist 400 error: {error_detail}")
