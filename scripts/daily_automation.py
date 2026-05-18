@@ -9,6 +9,7 @@ Invoked daily by .github/workflows/daily-cron.yml or manually:
 
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 import os
@@ -346,6 +347,7 @@ def process_lead(
     storage: StorageManager,
     lemlist: LemlistUploader,
     log: logging.Logger,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
     lead_id = vacancy.get("id") or slugify(
         f"{vacancy.get('company', 'unknown')}_{vacancy.get('title', 'role')}"
@@ -354,39 +356,72 @@ def process_lead(
     vacature_data = prompts.vacature(vacancy)
     doelgroep_data = prompts.doelgroep(vacancy)
 
+    dim_labels = {
+        "vacaturetitel_vindbaarheid": "Vacaturetitel vindbaarheid",
+        "functieomschrijving": "Functieomschrijving",
+        "salaris_arbeidsvoorwaarden": "Salaris & arbeidsvoorwaarden",
+        "employer_branding": "Employer branding",
+        "kandidaat_experience": "Kandidaat experience",
+        "kanaalstrategie": "Kanaalstrategie",
+        "concurrentiekracht": "Concurrentiekracht",
+        "seo_online_vindbaarheid": "SEO online vindbaarheid",
+    }
+
+    meta = {
+        "bedrijf": vacancy.get("company", ""),
+        "bedrijf_slug": slugify(vacancy.get("company", "")),
+        "functietitel": vacancy.get("title", ""),
+        "regio": vacancy.get("location", ""),
+        "sector": vacancy.get("sector", ""),
+    }
+
+    touch1_context = {"vacancy": vacancy, "meta": meta, "dim_labels": dim_labels, **vacature_data}
+    touch2_context = {"vacancy": vacancy, "meta": meta, "dim_labels": dim_labels, **doelgroep_data}
+
     touch1_pdf = pdfgen.render(
         "touch1_vacature.html",
-        {"vacancy": vacancy, "distill": vacature_data},
+        touch1_context,
         f"{lead_id}_touch1_vacature.pdf",
     )
     touch2_pdf = pdfgen.render(
         "touch2_doelgroep.html",
-        {"vacancy": vacancy, "distill": doelgroep_data},
+        touch2_context,
         f"{lead_id}_touch2_doelgroep.pdf",
     )
 
-    touch1_url = storage.upload(touch1_pdf, f"{lead_id}/touch1_vacature.pdf")
-    touch2_url = storage.upload(touch2_pdf, f"{lead_id}/touch2_doelgroep.pdf")
+    if dry_run:
+        touch1_url = f"(DRY-RUN) {touch1_pdf}"
+        touch2_url = f"(DRY-RUN) {touch2_pdf}"
+        log.info("[%s] DRY-RUN: PDFs generated at %s, %s", lead_id, touch1_pdf, touch2_pdf)
+        lemlist_result = {"_id": f"dry-run-{lead_id}", "status": "dry-run"}
+    else:
+        touch1_url = storage.upload(touch1_pdf, f"{lead_id}/touch1_vacature.pdf")
+        touch2_url = storage.upload(touch2_pdf, f"{lead_id}/touch2_doelgroep.pdf")
+        lemlist_result = lemlist.add_lead(
+            {
+                "email": vacancy.get("contact_email") or f"hr@{vacancy.get('company_domain', 'example.com')}",
+                "firstName": vacancy.get("contact_first_name", ""),
+                "lastName": vacancy.get("contact_last_name", ""),
+                "companyName": vacancy.get("company", ""),
+                "jobTitle": vacancy.get("title", ""),
+                "vacaturePdfUrl": touch1_url,
+                "doelgroepPdfUrl": touch2_url,
+            }
+        )
 
-    lemlist_result = lemlist.add_lead(
-        {
-            "email": vacancy.get("contact_email") or f"hr@{vacancy.get('company_domain', 'example.com')}",
-            "firstName": vacancy.get("contact_first_name", ""),
-            "lastName": vacancy.get("contact_last_name", ""),
-            "companyName": vacancy.get("company", ""),
-            "jobTitle": vacancy.get("title", ""),
-            "vacaturePdfUrl": touch1_url,
-            "doelgroepPdfUrl": touch2_url,
-        }
-    )
     log.info("[%s] processed -> lemlist id=%s", lead_id, lemlist_result.get("_id", "n/a"))
     return lemlist_result
 
 
 def run() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true", help="Skip Supabase/Lemlist uploads, local PDFs only")
+    args = parser.parse_args()
+
     cfg = Config.from_env()
     log = setup_logging(cfg.log_dir)
-    log.info("JobDigger V3 daily run starting (model=%s, batch=%d)", cfg.claude_model, cfg.lead_batch_size)
+    mode = "DRY-RUN" if args.dry_run else "LIVE"
+    log.info("JobDigger V3 daily run starting [%s] (model=%s, batch=%d)", mode, cfg.claude_model, cfg.lead_batch_size)
 
     loader = VacancyLoader(cfg.vacancies_path, log)
     icp = ICPFilter(log)
@@ -404,7 +439,7 @@ def run() -> int:
     for vacancy in selected:
         stats.processed += 1
         try:
-            process_lead(vacancy, prompts, pdfgen, storage, lemlist, log)
+            process_lead(vacancy, prompts, pdfgen, storage, lemlist, log, dry_run=args.dry_run)
             stats.succeeded += 1
         except Exception as exc:
             stats.failed += 1
@@ -413,11 +448,12 @@ def run() -> int:
             log.exception("Lead failed: %s", msg)
 
     summary = (
-        f"JobDigger V3: {stats.succeeded}/{stats.processed} leads OK "
+        f"JobDigger V3 [{mode}]: {stats.succeeded}/{stats.processed} leads OK "
         f"({stats.failed} failed) in {stats.elapsed():.1f}s"
     )
     log.info(summary)
-    notify_slack(cfg.slack_webhook_url, summary)
+    if not args.dry_run:
+        notify_slack(cfg.slack_webhook_url, summary)
     return 0 if stats.failed == 0 else 1
 
 
