@@ -26,3 +26,5 @@ data/*.xls
 .pytest_cache/
 .coverage
 htmlcov/
+data/*.txt
+data/*.csv
