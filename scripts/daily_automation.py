@@ -426,9 +426,9 @@ def process_lead(
             "companyName": vacancy.get("company", "") or "Unknown",
             "jobTitle": vacancy.get("title", "") or "Role",
             "city": vacancy.get("location", "") or "",
+            "vacaturePdfUrl": touch1_url,
+            "doelgroepPdfUrl": touch2_url,
         }
-        # Note: PDF URLs are passed via Lemlist template variables in daily_automation.py
-        # Custom field mapping happens in touch emails via {{vacaturePdfUrl}} and {{doelgroepPdfUrl}}
         lemlist_result = lemlist.add_lead(lead_payload)
 
     log.info("[%s] processed -> lemlist id=%s", lead_id, lemlist_result.get("_id", "n/a"))
