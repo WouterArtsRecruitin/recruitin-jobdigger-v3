@@ -295,23 +295,57 @@ class ICPFilter:
         "gemeente", "provincie", "ziekenhuis", "zorg", "onderwijs",
         "school", "universiteit", "hogeschool", "uitzend", "detach",
         "recruitment", "staffing", "interim", "overheid", "rijksoverheid",
+        "waterschap", "uitleenbureau", "payroll",
     ]
 
     EXCLUDED_VACANCY_KEYWORDS = [
+        # Stages / internships / weekend / volunteer
         "stage", "stagiair", "afstudeer", "leerling", "bbl", "internship",
         "vrijwilliger", "vrijwilligerswerk",
         "weekend", "zaterdaghulp", "vakantiekracht", "bijbaan", "scholier",
-        "oproepkracht", "invalkracht",
-        # Non-technical admin/sales/HR
+        "oproepkracht", "invalkracht", "bijbaantje",
+        # Finance / admin / secretarial
         "accounting", "accountant", "boekhouder", "boekhouding",
         "administratief", "administratie", "receptionist", "secretaresse",
         "office manager", "management assistent", "assistent manager",
+        "controller", "fiscalist",
+        # Retail / hospitality / personal services
         "kassamedewerker", "verkoper", "verkoopmedewerker", "winkelmedewerker",
-        "kapper", "haarstylist", "schoonheidsspecialist",
-        "kok", "chef-kok", "keukenhulp", "afwasser",
-        "marketeer", "content", "social media", "communicatie",
+        "filiaalmanager", "winkelbediende",
+        "kapper", "haarstylist", "schoonheidsspecialist", "stylist", "barber",
+        "kok", "chef-kok", "keukenhulp", "afwasser", "bediening",
+        "horeca", "hotelmedewerker", "restaurant",
+        "autopoetser",
+        # Sales / marketing / communications (commercial roles)
+        "sales manager", "account manager", "accountmanager",
+        "marketeer", "marketing", "content", "social media", "communicatie",
+        "communication", "pr manager", "commercieel medewerker",
+        "enterprise sales", "business development",
+        # HR / coaching / training (non-recruitment)
         "hr adviseur", "hr medewerker", "hr assistent", "p&o medewerker",
-        "klantenservice", "vrijwilliger", "vormgever",
+        "coach", "trainer",
+        # Service / hulp (low-skill)
+        "klantenservice", "hulpkracht", "schoonmaker", "schoonmaak",
+        # Creative (not engineering)
+        "vormgever", "graphic designer", "creative",
+        # Healthcare / education / social (uitzondering: techn. docent)
+        "verpleegkundige", "verzorgende", "psycholog", "psychiat",
+        "pedagog", "docent", "leerkracht", "lerar", "onderwijz",
+        "tandarts", "fysio", "dietist", "huisarts",
+        # Real estate / legal
+        "vastgoed", "real estate", "jurist", "juridisch",
+        # Driver / logistics (low-skill)
+        "chauffeur", "heftruckchauffeur", "bezorger",
+        # Cleaning / facility / outdoor gardening
+        "facilitair", "conciërge",
+        "groenvoorziening", "landschapsverzorging", "hovenier",
+        "voorman groen", "uitvoerder groen", "groenmedewerker",
+        # IT / software roles (excluded sector)
+        "ict system engineer", "software developer", "software engineer",
+        "fullstack", "backend developer", "frontend developer",
+        "data scientist", "data analyst",
+        # Training/coaching coordination
+        "planningscoördinator training", "training coördinator",
     ]
 
     # Positive filter: vacancy title MUST match one of these keywords (technical roles)
@@ -381,7 +415,7 @@ class ICPFilter:
         "metaal", "logistiek", "transport", "infra", "food", "maritiem",
     ]
 
-    DEFAULT_MIN_SCORE = 75
+    DEFAULT_MIN_SCORE = 65
 
     def __init__(self, log: logging.Logger, min_score: int = DEFAULT_MIN_SCORE):
         self.log = log
@@ -409,13 +443,18 @@ class ICPFilter:
         return qualified
 
     def _compute_score(self, v: dict[str, Any]) -> int:
+        """Scoring: exclusions return 0, otherwise base 50 + bonuses (max 100).
+
+        Hard rejects (return 0): excluded company keyword, excluded vacancy keyword,
+        excluded SBI. The required-vacancy keyword is now a +10 bonus (was hard gate)
+        so industrial roles like "Operator C" at a manufacturer can still qualify
+        via sector+SBI+regio combination.
+        """
         if self._has_excluded_keyword(v):
             return 0
         if self._has_excluded_vacancy_keyword(v):
             return 0
         if self._has_excluded_sbi(v):
-            return 0
-        if not self._has_required_vacancy_keyword(v):
             return 0
         score = 50
         if self._has_preferred_sbi(v):
@@ -424,6 +463,8 @@ class ICPFilter:
             score += 10
         if self._has_icp_sector(v):
             score += 15
+        if self._has_required_vacancy_keyword(v):
+            score += 10  # bonus for explicit technical role title
         return min(score, 100)
 
     def _has_required_vacancy_keyword(self, v: dict[str, Any]) -> bool:
@@ -444,11 +485,15 @@ class ICPFilter:
         return any(kw in title for kw in self.EXCLUDED_VACANCY_KEYWORDS)
 
     def _sbi_int(self, v: dict[str, Any]) -> int | None:
-        """Parse + normalize SBI code to level-2 (4-digit) for range matching.
+        """Parse + normalize SBI code to level-3 (4-digit) for range matching.
 
         JobDigger may store SBI as 2-digit (27), 3-digit (271), 4-digit (2711),
-        or 5-6-digit (27110, 711203). We normalize to level-2 (× 100 or × 10)
-        so range checks like (2000, 3399) work on all variants.
+        or 5-6-digit (27110, 711203). We normalize to 4-digit:
+          - 2 digit -> ×100  (27 -> 2700)
+          - 3 digit -> ×10   (271 -> 2710)
+          - 4 digit -> as-is (2711)
+          - 5+ digit -> truncate to first 4 (70221 -> 7022, 711203 -> 7112)
+        This lets range checks like (7020, 7022) match 70221 correctly.
         """
         sbi_raw = v.get("sbi_code")
         if sbi_raw is None or (isinstance(sbi_raw, float) and sbi_raw != sbi_raw):
@@ -458,9 +503,13 @@ class ICPFilter:
         except (TypeError, ValueError):
             return None
         if code < 100:
-            code = code * 100  # 27 -> 2700
+            code = code * 100
         elif code < 1000:
-            code = code * 10   # 271 -> 2710
+            code = code * 10
+        elif code >= 10000:
+            # Truncate to 4 digits: 70221 -> 7022, 711203 -> 7112
+            while code >= 10000:
+                code = code // 10
         return code
 
     def _has_excluded_sbi(self, v: dict[str, Any]) -> bool:
