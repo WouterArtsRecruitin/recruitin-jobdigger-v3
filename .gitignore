@@ -13,6 +13,8 @@ logs/*.log
 storage/pdfs/*.pdf
 data/daily_vacancies.json
 data/*.json
+data/*.xlsx
+data/*.xls
 !data/.gitkeep
 
 .DS_Store
