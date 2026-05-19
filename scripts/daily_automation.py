@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import anthropic
+import pandas as pd
 import requests
 from dotenv import load_dotenv
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -51,6 +52,7 @@ class Config:
     vacancies_path: Path
     pdf_dir: Path
     log_dir: Path
+    min_icp_score: int = 90
     canary_email: str | None = None
 
     @classmethod
@@ -63,6 +65,12 @@ class Config:
                 raise RuntimeError(f"Missing required env var: {name}")
             return value
 
+        # Auto-detect input file: prefer .xlsx if present, fallback to .json
+        input_path = os.environ.get("VACANCIES_INPUT_PATH")
+        if not input_path:
+            xlsx = ROOT / "data" / "daily_vacancies.xlsx"
+            input_path = "data/daily_vacancies.xlsx" if xlsx.exists() else "data/daily_vacancies.json"
+
         return cls(
             anthropic_api_key=required("ANTHROPIC_API_KEY"),
             claude_model=os.environ.get("CLAUDE_MODEL", "claude-opus-4-7"),
@@ -73,11 +81,10 @@ class Config:
             supabase_bucket=os.environ.get("SUPABASE_BUCKET", "jobdigger-pdfs"),
             slack_webhook_url=os.environ.get("SLACK_WEBHOOK_URL") or None,
             lead_batch_size=int(os.environ.get("LEAD_BATCH_SIZE", "20")),
-            vacancies_path=ROOT / os.environ.get(
-                "VACANCIES_INPUT_PATH", "data/daily_vacancies.json"
-            ),
+            vacancies_path=ROOT / input_path,
             pdf_dir=ROOT / os.environ.get("PDF_OUTPUT_DIR", "storage/pdfs"),
             log_dir=ROOT / os.environ.get("LOG_DIR", "logs"),
+            min_icp_score=int(os.environ.get("MIN_ICP_SCORE", "90")),
             canary_email=os.environ.get("CANARY_EMAIL") or None,
         )
 
@@ -109,6 +116,35 @@ def setup_logging(log_dir: Path) -> logging.Logger:
 
 
 class VacancyLoader:
+    """Load vacancies from JobDigger Excel (.xlsx) or JSON fixture.
+
+    Excel: maps JobDigger columns (Vacature, Bedrijf, Email, Score, ...)
+    to the V3 pipeline schema.
+    JSON: legacy fixture format used for tests.
+    """
+
+    JOBDIGGER_COLUMN_MAP = {
+        "Vacature": "title",
+        "Bedrijf": "company",
+        "Locatie": "location",
+        "Regio": "region",
+        "SBI_Sector": "sector",
+        "Contact_Voornaam": "contact_first_name",
+        "Contact_Achternaam": "contact_last_name",
+        "Email": "contact_email",
+        "Telefoon": "phone",
+        "Website": "company_domain",
+        "salarisindicatie": "salary",
+        "URL": "vacancy_url",
+        "KVK": "kvk",
+        "SBI_Code": "sbi_code",
+        "Score": "icp_score",
+        "Prioriteit": "icp_priority",
+        "Functie_Type": "functie_type",
+        "beroep": "beroep",
+        "opleiding": "opleiding",
+    }
+
     def __init__(self, path: Path, log: logging.Logger):
         self.path = path
         self.log = log
@@ -119,78 +155,101 @@ class VacancyLoader:
                 f"Scraper output not found at {self.path}. "
                 "Run the scraper first or set VACANCIES_INPUT_PATH."
             )
+        if self.path.suffix.lower() in {".xlsx", ".xls"}:
+            return self._load_excel()
+        return self._load_json()
+
+    def _load_json(self) -> list[dict[str, Any]]:
         with self.path.open(encoding="utf-8") as f:
             vacancies = json.load(f)
-        self.log.info("Loaded %d vacancies from %s", len(vacancies), self.path)
+        self.log.info("Loaded %d vacancies from JSON %s", len(vacancies), self.path)
+        return vacancies
+
+    def _load_excel(self) -> list[dict[str, Any]]:
+        df = pd.read_excel(self.path)
+        # Strip whitespace from column names
+        df.columns = [str(c).strip() for c in df.columns]
+        vacancies: list[dict[str, Any]] = []
+        for _, row in df.iterrows():
+            vacancy: dict[str, Any] = {}
+            for excel_col, v3_field in self.JOBDIGGER_COLUMN_MAP.items():
+                if excel_col not in df.columns:
+                    continue
+                val = row[excel_col]
+                if pd.isna(val):
+                    continue
+                vacancy[v3_field] = str(val).strip() if isinstance(val, str) else val
+            if vacancy.get("company"):
+                vacancies.append(vacancy)
+        self.log.info("Loaded %d vacancies from Excel %s", len(vacancies), self.path)
         return vacancies
 
 
 # ---------------------------------------------------------------------------
-# Stage 2: ICP filter (6 binary gates)
+# Stage 2: ICP filter — uses JobDigger's pre-computed Score column
 # ---------------------------------------------------------------------------
 
 
 class ICPFilter:
-    """Binary 6-gate filter. A vacancy passes only if all gates return True.
+    """Filter on JobDigger's Score (≥ threshold) + has email.
 
-    Gates are intentionally strict — we want ~15-20% pass-through on the
-    daily 200-vacancy scrape, yielding ~20 qualified leads.
+    JobDigger already does sector/regio/SBI/competitor exclusion and
+    rule-based scoring (see pipeline_step1_icp_filter.py). We trust that
+    work and just gate on Score and email presence.
+
+    Falls back to legacy hardcoded gates if Score column is absent
+    (e.g., test fixtures without JobDigger scoring).
     """
 
-    TARGET_SECTORS = {
-        "oil & gas", "olie en gas", "energie",
-        "bouw", "construction",
-        "productie", "manufacturing", "industrie",
-        "automation", "automatisering",
-        "renewable", "wind", "solar", "duurzame energie",
-    }
+    DEFAULT_MIN_SCORE = 90
 
-    def __init__(self, log: logging.Logger):
+    def __init__(self, log: logging.Logger, min_score: int = DEFAULT_MIN_SCORE):
         self.log = log
+        self.min_score = min_score
 
     def passes(self, vacancy: dict[str, Any]) -> bool:
-        gates = [
-            self._gate_sector(vacancy),
-            self._gate_seniority(vacancy),
-            self._gate_location(vacancy),
-            self._gate_contract(vacancy),
-            self._gate_company_size(vacancy),
-            self._gate_has_contact(vacancy),
-        ]
-        return all(gates)
+        if "icp_score" in vacancy:
+            return self._score_gate(vacancy) and self._email_gate(vacancy)
+        return self._legacy_fixture_gate(vacancy)
 
     def filter(self, vacancies: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
-        qualified = [v for v in vacancies if self.passes(v)]
-        self.log.info("ICP qualified: %d/%d", len(qualified), len(list(vacancies)) if isinstance(vacancies, list) else -1)
+        vacancies_list = list(vacancies)
+        qualified = [v for v in vacancies_list if self.passes(v)]
+        qualified.sort(key=lambda v: self._score_value(v), reverse=True)
+        self.log.info(
+            "ICP qualified: %d/%d (min_score=%d)",
+            len(qualified), len(vacancies_list), self.min_score,
+        )
         return qualified
 
-    def _gate_sector(self, v: dict[str, Any]) -> bool:
-        sector = (v.get("sector") or v.get("industry") or "").lower()
-        return any(target in sector for target in self.TARGET_SECTORS)
-
-    def _gate_seniority(self, v: dict[str, Any]) -> bool:
-        level = (v.get("seniority") or v.get("level") or "").lower()
-        return level in {"medior", "senior", "lead", "principal", "expert"}
-
-    def _gate_location(self, v: dict[str, Any]) -> bool:
-        country = (v.get("country") or "").lower()
-        return country in {"nl", "netherlands", "nederland", ""}
-
-    def _gate_contract(self, v: dict[str, Any]) -> bool:
-        contract = (v.get("contract_type") or v.get("employment") or "").lower()
-        return contract in {"vast", "permanent", "fulltime", "full-time", ""}
-
-    def _gate_company_size(self, v: dict[str, Any]) -> bool:
-        size = v.get("company_size")
-        if size is None:
-            return True
+    def _score_value(self, v: dict[str, Any]) -> int:
         try:
-            return int(size) >= 20
+            return int(float(str(v.get("icp_score", 0))))
         except (TypeError, ValueError):
-            return True
+            return 0
 
-    def _gate_has_contact(self, v: dict[str, Any]) -> bool:
-        return bool(v.get("contact_email") or v.get("company_domain"))
+    def _score_gate(self, v: dict[str, Any]) -> bool:
+        return self._score_value(v) >= self.min_score
+
+    def _email_gate(self, v: dict[str, Any]) -> bool:
+        email = (v.get("contact_email") or "").strip()
+        return "@" in email and email.lower() not in {"nan", "none", ""}
+
+    def _legacy_fixture_gate(self, v: dict[str, Any]) -> bool:
+        """Used for JSON test fixtures without JobDigger scoring."""
+        sector = (v.get("sector") or "").lower()
+        target_sectors = {
+            "oil & gas", "olie en gas", "energie",
+            "bouw", "construction",
+            "productie", "manufacturing", "industrie",
+            "automation", "automatisering",
+            "renewable", "wind", "solar", "duurzame energie",
+        }
+        if not any(t in sector for t in target_sectors):
+            return False
+        if not (v.get("contact_email") or v.get("company_domain")):
+            return False
+        return True
 
 
 # ---------------------------------------------------------------------------
@@ -479,7 +538,7 @@ def run() -> int:
     log.info("JobDigger V3 daily run starting [%s]%s (model=%s, batch=%d)", mode, canary_note, cfg.claude_model, cfg.lead_batch_size)
 
     loader = VacancyLoader(cfg.vacancies_path, log)
-    icp = ICPFilter(log)
+    icp = ICPFilter(log, min_score=cfg.min_icp_score)
     prompts = PromptExecutor(cfg, log)
     pdfgen = PDFGenerator(cfg.pdf_dir, log)
     storage = StorageManager(cfg, log)

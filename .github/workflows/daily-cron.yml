@@ -38,12 +38,16 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      - name: Prepare test data (if no scraper output exists)
+      - name: Prepare input data (Excel preferred, JSON fallback)
         run: |
           mkdir -p data
-          if [ ! -f data/daily_vacancies.json ]; then
+          if [ -f data/daily_vacancies.xlsx ]; then
+            echo "Using JobDigger Excel input: data/daily_vacancies.xlsx"
+          elif [ -f data/daily_vacancies.json ]; then
+            echo "Using existing JSON input: data/daily_vacancies.json"
+          else
             cp test/fixtures/sample_vacancies.json data/daily_vacancies.json
-            echo "Using test fixture for this run"
+            echo "Using test fixture (no real JobDigger input found)"
           fi
 
       - name: Run daily automation
@@ -58,6 +62,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           LEAD_BATCH_SIZE: ${{ github.event.inputs.lead_batch_size || vars.LEAD_BATCH_SIZE || '20' }}
           CANARY_EMAIL: ${{ vars.CANARY_EMAIL || '' }}
+          MIN_ICP_SCORE: ${{ vars.MIN_ICP_SCORE || '90' }}
         run: python scripts/daily_automation.py
 
       - name: Upload logs artifact
