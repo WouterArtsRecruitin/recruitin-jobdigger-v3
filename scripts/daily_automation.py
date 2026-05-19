@@ -118,11 +118,15 @@ def setup_logging(log_dir: Path) -> logging.Logger:
 class VacancyLoader:
     """Load vacancies from JobDigger Excel (.xlsx) or JSON fixture.
 
-    Excel: maps JobDigger columns (Vacature, Bedrijf, Email, Score, ...)
-    to the V3 pipeline schema.
-    JSON: legacy fixture format used for tests.
+    Accepts BOTH formats:
+    - Raw JobDigger email-attachment (headers like "Functietitel", "Bedrijfsnaam",
+      "Contactpersoon: E-mail", possibly with leading blank rows).
+    - Processed JobDigger_Processed_*.xlsx (already normalized + ICP scored).
+
+    Both are normalized to canonical V3 names (`title`, `company`, `contact_email`, …).
     """
 
+    # Canonical Excel → V3 pipeline field map
     JOBDIGGER_COLUMN_MAP = {
         "Vacature": "title",
         "Bedrijf": "company",
@@ -145,6 +149,55 @@ class VacancyLoader:
         "opleiding": "opleiding",
     }
 
+    # Raw JobDigger header aliases → canonical Excel name (lowercase keys for case-insensitive match)
+    # Mirrors jobdigger_template_processor.normalize_columns
+    RAW_ALIASES = {
+        "bedrijfsnaam": "Bedrijf",
+        "bedrijf": "Bedrijf",
+        "organisatie": "Bedrijf",
+        "company": "Bedrijf",
+        "functietitel": "Vacature",
+        "vacancy": "Vacature",
+        "functie": "Vacature",
+        "job_title": "Vacature",
+        "vacature": "Vacature",
+        "standplaats": "Locatie",
+        "plaats": "Locatie",
+        "city": "Locatie",
+        "location": "Locatie",
+        "locatie": "Locatie",
+        "standplaats: provincie": "Regio",
+        "provincie": "Regio",
+        "province": "Regio",
+        "region": "Regio",
+        "regio": "Regio",
+        "bedrijf: branche": "SBI_Sector",
+        "sector": "SBI_Sector",
+        "sbi_sector": "SBI_Sector",
+        "sbi code": "SBI_Code",
+        "sbi_code": "SBI_Code",
+        "sbi": "SBI_Code",
+        "kvk_number": "KVK",
+        "kvk": "KVK",
+        "contactpersoon: voornaam": "Contact_Voornaam",
+        "contact_voornaam": "Contact_Voornaam",
+        "contactpersoon: achternaam": "Contact_Achternaam",
+        "contact_achternaam": "Contact_Achternaam",
+        "contactpersoon: e-mail": "Email",
+        "e-mail": "Email",
+        "email": "Email",
+        "contactpersoon: telefoon": "Telefoon",
+        "phone": "Telefoon",
+        "telefoon": "Telefoon",
+        "website": "Website",
+        "url": "URL",
+        "link": "URL",
+        "salarisindicatie": "salarisindicatie",
+        "score": "Score",
+        "prioriteit": "Prioriteit",
+        "functie_type": "Functie_Type",
+    }
+
     def __init__(self, path: Path, log: logging.Logger):
         self.path = path
         self.log = log
@@ -165,10 +218,42 @@ class VacancyLoader:
         self.log.info("Loaded %d vacancies from JSON %s", len(vacancies), self.path)
         return vacancies
 
+    def _read_excel_autoheader(self) -> "pd.DataFrame":
+        """Try header rows 0..5, pick the one yielding the most known columns."""
+        best_df = None
+        best_score = -1
+        best_header = 0
+        known_aliases = set(self.RAW_ALIASES.keys())
+        for header_row in range(6):
+            try:
+                df = pd.read_excel(self.path, header=header_row)
+            except Exception:
+                continue
+            if df.empty:
+                continue
+            cols_lower = {str(c).lower().strip() for c in df.columns}
+            score = len(cols_lower & known_aliases)
+            if score > best_score:
+                best_score = score
+                best_df = df
+                best_header = header_row
+        if best_df is None:
+            return pd.read_excel(self.path)
+        if best_header > 0:
+            self.log.info("Auto-detected header on row %d (matched %d known columns)", best_header, best_score)
+        return best_df
+
+    def _normalize_columns(self, df: "pd.DataFrame") -> "pd.DataFrame":
+        """Lowercase + apply RAW_ALIASES so both raw and processed exports work."""
+        df.columns = [str(c).lower().strip() for c in df.columns]
+        rename_map = {col: self.RAW_ALIASES[col] for col in df.columns if col in self.RAW_ALIASES}
+        if rename_map:
+            df = df.rename(columns=rename_map)
+        return df
+
     def _load_excel(self) -> list[dict[str, Any]]:
-        df = pd.read_excel(self.path)
-        # Strip whitespace from column names
-        df.columns = [str(c).strip() for c in df.columns]
+        df = self._read_excel_autoheader()
+        df = self._normalize_columns(df)
         vacancies: list[dict[str, Any]] = []
         for _, row in df.iterrows():
             vacancy: dict[str, Any] = {}
