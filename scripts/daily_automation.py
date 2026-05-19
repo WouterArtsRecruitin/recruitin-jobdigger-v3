@@ -327,21 +327,33 @@ class LemlistUploader:
         return response.json()
 
     def _update_lead(self, lead: dict[str, Any]) -> dict[str, Any]:
-        """PATCH an existing lead to refresh custom fields (PDF URLs etc)."""
+        """PATCH an existing lead to refresh custom fields (PDF URLs etc).
+
+        Lemlist rate-limit: 1 req/12s. Wait before PATCH after POST.
+        Retry once on 429 with longer backoff.
+        """
         url = f"{self.API_BASE}/campaigns/{self.cfg.lemlist_campaign_id}/leads/{lead['email']}"
-        response = requests.patch(
-            url,
-            auth=("", self.cfg.lemlist_api_key),
-            json=lead,
-            timeout=30,
-        )
-        if response.status_code >= 400:
-            self.log.warning(f"Lemlist PATCH failed for {lead['email']} ({response.status_code}): {response.text[:200]}")
-            return {"_id": f"update-failed-{lead['email']}", "status": "update_failed"}
-        self.log.info(f"Lead {lead['email']} updated with new fields")
-        result = response.json() if response.text else {}
-        result["status"] = "updated"
-        return result
+        time.sleep(13)  # rate-limit buffer after the failed POST
+
+        for attempt in (1, 2):
+            response = requests.patch(
+                url,
+                auth=("", self.cfg.lemlist_api_key),
+                json=lead,
+                timeout=30,
+            )
+            if response.status_code == 429 and attempt == 1:
+                self.log.info(f"Lemlist 429 on PATCH, backing off 90s before retry")
+                time.sleep(90)
+                continue
+            if response.status_code >= 400:
+                self.log.warning(f"Lemlist PATCH failed for {lead['email']} ({response.status_code}): {response.text[:200]}")
+                return {"_id": f"update-failed-{lead['email']}", "status": "update_failed"}
+            self.log.info(f"Lead {lead['email']} updated with new fields")
+            result = response.json() if response.text else {}
+            result["status"] = "updated"
+            return result
+        return {"_id": f"update-failed-{lead['email']}", "status": "update_failed"}
 
 
 # ---------------------------------------------------------------------------
