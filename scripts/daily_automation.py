@@ -191,65 +191,147 @@ class VacancyLoader:
 
 
 class ICPFilter:
-    """Filter on JobDigger's Score (≥ threshold) + has email.
+    """ICP filter based on lemlist_icp_audit.py (validated source of truth).
 
-    JobDigger already does sector/regio/SBI/competitor exclusion and
-    rule-based scoring (see pipeline_step1_icp_filter.py). We trust that
-    work and just gate on Score and email presence.
+    Score = 50 base, max 100. Excluded keywords/SBI return 0 (immediate reject).
+    Threshold default 75 (covers preferred SBI + regio OR preferred SBI + sector).
 
-    Falls back to legacy hardcoded gates if Score column is absent
-    (e.g., test fixtures without JobDigger scoring).
+    Gates applied in order:
+    1. EXCLUDED_KEYWORDS in company name → score 0 (overheid, zorg, uitzend, etc.)
+    2. EXCLUDED_SBI ranges → score 0 (IT, finance, government, healthcare, retail)
+    3. Base 50 + bonuses:
+       - +20 PREFERRED_SBI (manufacturing, bouw, transport, energy)
+       - +10 PREFERRED_REGIO (south/east NL provinces + cities)
+       - +15 ICP_SECTORS (bouw, installatie, techniek, etc.)
+    4. Has valid contact email
     """
 
-    DEFAULT_MIN_SCORE = 90
+    EXCLUDED_KEYWORDS = [
+        "gemeente", "provincie", "ziekenhuis", "zorg", "onderwijs",
+        "school", "universiteit", "hogeschool", "uitzend", "detach",
+        "recruitment", "staffing", "interim", "overheid", "rijksoverheid",
+    ]
+
+    EXCLUDED_VACANCY_KEYWORDS = [
+        "stage", "stagiair", "afstudeer", "leerling", "bbl", "internship",
+        "vrijwilliger", "vrijwilligerswerk",
+        "weekend", "zaterdaghulp", "vakantiekracht", "bijbaan", "scholier",
+        "oproepkracht", "invalkracht",
+    ]
+
+    EXCLUDED_SBI = [
+        (6200, 6299), (6300, 6399),
+        (6400, 6499), (6500, 6599),
+        (8400, 8499), (8500, 8599),
+        (8600, 8699), (8700, 8799), (8800, 8899),
+        (7810, 7819), (7820, 7829), (7830, 7839),
+        (7000, 7010), (7020, 7022),
+        (4700, 4799),
+        (7210, 7219),
+    ]
+
+    PREFERRED_SBI = [
+        (2000, 3399),
+        (4100, 4399),
+        (4900, 5199),
+        (3500, 3599),
+    ]
+
+    PREFERRED_REGIO = [
+        "gelderland", "overijssel", "noord-brabant", "limburg", "utrecht",
+        "arnhem", "nijmegen", "eindhoven", "tilburg", "apeldoorn",
+        "enschede", "zwolle", "deventer", "doetinchem", "winterswijk",
+    ]
+
+    ICP_SECTORS = [
+        "bouw", "installatie", "techniek", "industrie", "energie",
+        "metaal", "logistiek", "transport", "infra", "food", "maritiem",
+    ]
+
+    DEFAULT_MIN_SCORE = 75
 
     def __init__(self, log: logging.Logger, min_score: int = DEFAULT_MIN_SCORE):
         self.log = log
         self.min_score = min_score
 
     def passes(self, vacancy: dict[str, Any]) -> bool:
-        if "icp_score" in vacancy:
-            return self._score_gate(vacancy) and self._email_gate(vacancy)
-        return self._legacy_fixture_gate(vacancy)
+        return self._compute_score(vacancy) >= self.min_score and self._email_gate(vacancy)
 
     def filter(self, vacancies: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
         vacancies_list = list(vacancies)
-        qualified = [v for v in vacancies_list if self.passes(v)]
-        qualified.sort(key=lambda v: self._score_value(v), reverse=True)
+        scored = [(v, self._compute_score(v)) for v in vacancies_list]
+        qualified = [v for v, s in scored if s >= self.min_score and self._email_gate(v)]
+        qualified.sort(key=lambda v: self._compute_score(v), reverse=True)
+
+        # Diagnostic counts
+        excluded_keyword = sum(1 for v, s in scored if s == 0 and self._has_excluded_keyword(v))
+        excluded_sbi = sum(1 for v, s in scored if s == 0 and not self._has_excluded_keyword(v) and self._has_excluded_sbi(v))
+        no_email = sum(1 for v, s in scored if s >= self.min_score and not self._email_gate(v))
+
         self.log.info(
-            "ICP qualified: %d/%d (min_score=%d)",
+            "ICP qualified: %d/%d (min_score=%d) | rejected: %d keyword, %d SBI, %d no-email",
             len(qualified), len(vacancies_list), self.min_score,
+            excluded_keyword, excluded_sbi, no_email,
         )
         return qualified
 
-    def _score_value(self, v: dict[str, Any]) -> int:
-        try:
-            return int(float(str(v.get("icp_score", 0))))
-        except (TypeError, ValueError):
+    def _compute_score(self, v: dict[str, Any]) -> int:
+        if self._has_excluded_keyword(v):
             return 0
+        if self._has_excluded_vacancy_keyword(v):
+            return 0
+        if self._has_excluded_sbi(v):
+            return 0
+        score = 50
+        if self._has_preferred_sbi(v):
+            score += 20
+        if self._has_preferred_regio(v):
+            score += 10
+        if self._has_icp_sector(v):
+            score += 15
+        return min(score, 100)
 
-    def _score_gate(self, v: dict[str, Any]) -> bool:
-        return self._score_value(v) >= self.min_score
+    def _has_excluded_keyword(self, v: dict[str, Any]) -> bool:
+        company = str(v.get("company") or "").lower()
+        return any(kw in company for kw in self.EXCLUDED_KEYWORDS)
+
+    def _has_excluded_vacancy_keyword(self, v: dict[str, Any]) -> bool:
+        title = str(v.get("title") or "").lower()
+        return any(kw in title for kw in self.EXCLUDED_VACANCY_KEYWORDS)
+
+    def _sbi_int(self, v: dict[str, Any]) -> int | None:
+        sbi_raw = v.get("sbi_code")
+        if sbi_raw is None or (isinstance(sbi_raw, float) and sbi_raw != sbi_raw):
+            return None
+        try:
+            return int(float(str(sbi_raw)))
+        except (TypeError, ValueError):
+            return None
+
+    def _has_excluded_sbi(self, v: dict[str, Any]) -> bool:
+        sbi = self._sbi_int(v)
+        if sbi is None:
+            return False
+        return any(lo <= sbi <= hi for lo, hi in self.EXCLUDED_SBI)
+
+    def _has_preferred_sbi(self, v: dict[str, Any]) -> bool:
+        sbi = self._sbi_int(v)
+        if sbi is None:
+            return False
+        return any(lo <= sbi <= hi for lo, hi in self.PREFERRED_SBI)
+
+    def _has_preferred_regio(self, v: dict[str, Any]) -> bool:
+        location_fields = [v.get("location"), v.get("region")]
+        haystack = " ".join(str(x) for x in location_fields if x).lower()
+        return any(r in haystack for r in self.PREFERRED_REGIO)
+
+    def _has_icp_sector(self, v: dict[str, Any]) -> bool:
+        sector = str(v.get("sector") or "").lower()
+        return any(s in sector for s in self.ICP_SECTORS)
 
     def _email_gate(self, v: dict[str, Any]) -> bool:
-        email = (v.get("contact_email") or "").strip()
+        email = str(v.get("contact_email") or "").strip()
         return "@" in email and email.lower() not in {"nan", "none", ""}
-
-    def _legacy_fixture_gate(self, v: dict[str, Any]) -> bool:
-        """Used for JSON test fixtures without JobDigger scoring."""
-        sector = (v.get("sector") or "").lower()
-        target_sectors = {
-            "oil & gas", "olie en gas", "energie",
-            "bouw", "construction",
-            "productie", "manufacturing", "industrie",
-            "automation", "automatisering",
-            "renewable", "wind", "solar", "duurzame energie",
-        }
-        if not any(t in sector for t in target_sectors):
-            return False
-        if not (v.get("contact_email") or v.get("company_domain")):
-            return False
-        return True
 
 
 # ---------------------------------------------------------------------------
