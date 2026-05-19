@@ -10,6 +10,9 @@ Je ontvangt:
 2. (Optioneel) de output van `doelgroep_full_v2.md` analyse
 3. (Optioneel) JobDigger / Indeed / LinkedIn data
 
+**SECTOR AFLEIDING (KRITIEK):**
+De meegegeven `sector` komt uit JobDigger's SBI-classificatie en kan onjuist zijn. Leid de werkelijke sector af uit bedrijfsnaam + functietitel + vacaturetekst (bijv. Nobian = Chemie/Procesindustrie, TenneT = Energie & netbeheer, Boskalis = Maritime/Infra). Gebruik die werkelijke sector in alle copy, salaris-benchmarks, kanaalkeuze en concurrentie-analyse — niet de mogelijk verkeerde SBI-string.
+
 Je geeft terug: **ALLEEN een geldig JSON object** dat de 3-pagina PDF teaser kan renderen volgens het doelgroepenrapport.nl voorbeeld.
 
 **KRITIEK:** Geen tekst voor of na de JSON. Geen markdown fences. Geen uitleg. Alleen ruwe JSON.

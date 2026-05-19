@@ -10,6 +10,14 @@ Je ontvangt:
 2. (Optioneel) de output van `vacature_full_v8.md` analyse
 3. Markt-context: sector, regio, bedrijfsnaam
 
+**SECTOR AFLEIDING (KRITIEK):**
+De meegegeven `sector` komt uit JobDigger's SBI-classificatie en kan **onjuist of te generiek zijn**. Voorbeeld: Nobian (zout/chemie) krijgt soms "Technisch ontwerp en advies voor grond-, water- en wegenbouw". Leid de juiste sector af uit:
+- Bedrijfsnaam (Nobian → Chemie/Procesindustrie; TenneT → Energie & netbeheer; Boskalis → Maritime/Infra)
+- Functietitel (Maintenance Engineer E/I → procesindustrie; Offshore Project Manager → energy/offshore)
+- Vacaturetekst (genoemde processen, klanten, producten)
+
+Wanneer de meegegeven SBI-sector duidelijk afwijkt van de werkelijke industrie van het bedrijf: gebruik de werkelijke sector in `meta.sector` (max 60 chars, formeel Nederlands).
+
 Je geeft terug: **ALLEEN een geldig JSON object** dat de 3-pagina PDF teaser kan renderen volgens het kandidatentekort.nl voorbeeld.
 
 **KRITIEK:** Geen tekst voor of na de JSON. Geen markdown fences. Geen uitleg. Alleen ruwe JSON.

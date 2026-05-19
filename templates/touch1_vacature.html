@@ -171,7 +171,7 @@
       <div class="highlight-col">
         <div class="highlight-num">03 · Salaris</div>
         <div class="highlight-title">{{ salaris.geboden }}</div>
-        <div class="highlight-meta">Niet vermeld aangeboden</div>
+        <div class="highlight-meta">{% if "vermeld" in salaris.geboden|lower or "niet" in salaris.geboden|lower %}Niet vermeld aangeboden{% else %}Markt: {{ salaris.markt_range }}{% endif %}</div>
       </div>
     </div>
   </div>

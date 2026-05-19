@@ -255,7 +255,7 @@
     <div class="module-list">
       {% for module in volledig_rapport.modules_lijst %}
       <div class="module-item">
-        <div class="module-left"><span class="module-num">{{ "%02d" | format(loop.index + 1) }}</span><span class="module-name">{{ module }}</span></div>
+        <div class="module-left"><span class="module-num">{{ "%02d" | format(loop.index) }}</span><span class="module-name">{{ module }}</span></div>
         <span class="module-lock">— IN VOLLEDIG RAPPORT</span>
       </div>
       {% endfor %}
