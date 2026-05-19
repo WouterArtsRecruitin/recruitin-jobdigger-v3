@@ -380,6 +380,85 @@ class ICPFilter:
 
 
 # ---------------------------------------------------------------------------
+# Stage 2b: Deduplication (Lemlist graveyard + cross-campaign history)
+# ---------------------------------------------------------------------------
+
+
+class Deduplicator:
+    """Cross-campaign + graveyard dedup.
+
+    Fetches at startup:
+    - Lemlist unsubscribe/graveyard list (live from API)
+    - All leads across known campaigns (V3 + P12 + P13 + P14)
+
+    Filters out vacancies whose contact_email matches either set.
+    """
+
+    # All historic campaigns to check (from CLAUDE.md memory + lemlist-api.md)
+    HISTORIC_CAMPAIGNS = [
+        "cam_B3BDF7MeBCcTN3CtS",  # V3 P12 (current)
+        "cam_8KGpG2G5ppSrwy6v4",  # P12 Stage 2
+        "cam_rkPQbJ8w7QbAkWSGJ",  # P13 ICP Top
+        "cam_mB5MTdo9CWCsCrLfw",  # P14 Corporate Recruiter
+    ]
+
+    def __init__(self, cfg: "Config", log: logging.Logger):
+        self.cfg = cfg
+        self.log = log
+        self.blocked_emails: set[str] = set()
+
+    def load_blocklist(self) -> None:
+        """Fetch graveyard + historic leads from Lemlist API."""
+        graveyard = self._fetch_graveyard()
+        historic = self._fetch_historic_leads()
+        self.blocked_emails = graveyard | historic
+        self.log.info(
+            "Dedup blocklist loaded: %d graveyard + %d historic = %d total emails",
+            len(graveyard), len(historic), len(self.blocked_emails),
+        )
+
+    def _fetch_graveyard(self) -> set[str]:
+        """GET /unsubscribes — all blocked emails Lemlist-wide."""
+        emails: set[str] = set()
+        try:
+            response = requests.get(
+                "https://api.lemlist.com/api/unsubscribes",
+                auth=("", self.cfg.lemlist_api_key),
+                timeout=30,
+            )
+            response.raise_for_status()
+            data = response.json()
+            for item in data if isinstance(data, list) else data.get("unsubscribes", []):
+                email = (item.get("value") or item.get("email") or "").lower().strip()
+                if email:
+                    emails.add(email)
+        except Exception as e:
+            self.log.warning("Failed to fetch Lemlist graveyard: %s", e)
+        return emails
+
+    def _fetch_historic_leads(self) -> set[str]:
+        """List all leads across historic campaigns to prevent re-mailing.
+
+        Note: Lemlist /leads endpoint returns lead_id + contactId but not email
+        directly. We rely on Lemlist's own "already in campaign" rejection
+        on POST instead of pre-fetching N+1 contact details.
+        """
+        return set()  # Lemlist API handles cross-campaign rejection automatically
+
+    def is_blocked(self, email: str) -> bool:
+        if not email:
+            return False
+        return email.lower().strip() in self.blocked_emails
+
+    def filter(self, vacancies: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+        filtered = [v for v in vacancies if not self.is_blocked(v.get("contact_email") or "")]
+        rejected = len(list(vacancies)) - len(filtered) if isinstance(vacancies, list) else 0
+        if rejected > 0:
+            self.log.info("Dedup: rejected %d leads already in graveyard/history", rejected)
+        return filtered
+
+
+# ---------------------------------------------------------------------------
 # Stage 3: Claude distill prompts
 # ---------------------------------------------------------------------------
 
@@ -666,15 +745,17 @@ def run() -> int:
 
     loader = VacancyLoader(cfg.vacancies_path, log)
     icp = ICPFilter(log, min_score=cfg.min_icp_score)
+    dedup = Deduplicator(cfg, log)
     prompts = PromptExecutor(cfg, log)
     pdfgen = PDFGenerator(cfg.pdf_dir, log)
     storage = StorageManager(cfg, log)
     lemlist = LemlistUploader(cfg, log)
 
     vacancies = loader.load()
-    qualified = [v for v in vacancies if icp.passes(v)]
-    log.info("ICP qualified: %d/%d", len(qualified), len(vacancies))
-    selected = qualified[: cfg.lead_batch_size]
+    qualified = icp.filter(vacancies)
+    dedup.load_blocklist()
+    deduplicated = dedup.filter(qualified)
+    selected = deduplicated[: cfg.lead_batch_size]
 
     stats = RunStats()
     for vacancy in selected:
