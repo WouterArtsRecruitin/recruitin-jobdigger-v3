@@ -217,6 +217,45 @@ class ICPFilter:
         "vrijwilliger", "vrijwilligerswerk",
         "weekend", "zaterdaghulp", "vakantiekracht", "bijbaan", "scholier",
         "oproepkracht", "invalkracht",
+        # Non-technical admin/sales/HR
+        "accounting", "accountant", "boekhouder", "boekhouding",
+        "administratief", "administratie", "receptionist", "secretaresse",
+        "office manager", "management assistent", "assistent manager",
+        "kassamedewerker", "verkoper", "verkoopmedewerker", "winkelmedewerker",
+        "kapper", "haarstylist", "schoonheidsspecialist",
+        "kok", "chef-kok", "keukenhulp", "afwasser",
+        "marketeer", "content", "social media", "communicatie",
+        "hr adviseur", "hr medewerker", "hr assistent", "p&o medewerker",
+        "klantenservice", "vrijwilliger", "vormgever",
+    ]
+
+    # Positive filter: vacancy title MUST match one of these keywords (technical roles)
+    REQUIRED_VACANCY_KEYWORDS = [
+        # Monteur family
+        "monteur", "installateur", "fitter", "mechanic",
+        "servicemonteur", "elektromonteur", "installatiemonteur",
+        "field service",
+        # Technicus / Engineer
+        "technicus", "technician", "engineer", "ingenieur", "engineering",
+        "medewerker technische dienst", "mtd",
+        # Werkvoorbereiding / Calculatie
+        "werkvoorbereider", "calculator", "kostendeskundige", "estimator",
+        "cost engineer", "wvb",
+        # Tekenen / Constructie
+        "tekenaar", "constructeur", "designer", "cad", "drafter",
+        # Project management
+        "projectleider", "projectmanager", "project manager", "project leader",
+        "uitvoerder", "werkvoorbereider",
+        # PLC / Automation
+        "plc", "automation", "scada", "dcs", "besturingstechnicus",
+        # Teamleader / Coordinatie
+        "teamleider", "team leader", "voorman", "shift leader", "shiftleader",
+        "coordinator", "coördinator",
+        # Inkoop / Procurement (technical)
+        "inkoop", "inkoper", "procurement", "contract manager",
+        # Production / Workshop
+        "productieleider", "productiemanager", "werkplaats",
+        "materieelbeheerder",
     ]
 
     EXCLUDED_SBI = [
@@ -282,6 +321,8 @@ class ICPFilter:
             return 0
         if self._has_excluded_sbi(v):
             return 0
+        if not self._has_required_vacancy_keyword(v):
+            return 0
         score = 50
         if self._has_preferred_sbi(v):
             score += 20
@@ -290,6 +331,10 @@ class ICPFilter:
         if self._has_icp_sector(v):
             score += 15
         return min(score, 100)
+
+    def _has_required_vacancy_keyword(self, v: dict[str, Any]) -> bool:
+        title = str(v.get("title") or "").lower()
+        return any(kw in title for kw in self.REQUIRED_VACANCY_KEYWORDS)
 
     def _has_excluded_keyword(self, v: dict[str, Any]) -> bool:
         company = str(v.get("company") or "").lower()
