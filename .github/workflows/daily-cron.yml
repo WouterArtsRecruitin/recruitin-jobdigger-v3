@@ -1,15 +1,15 @@
 name: JobDigger Daily Automation
 
 on:
-  schedule:
-    # 07:00 UTC = 08:00 CET (winter) / 09:00 CEST (summer)
-    - cron: "0 7 * * *"
+  # CRON DISABLED during manual rollout phase. Re-enable after 3 successful manual runs.
+  # schedule:
+  #   - cron: "0 7 * * *"  # 07:00 UTC daily
   workflow_dispatch:
     inputs:
       lead_batch_size:
-        description: "Override LEAD_BATCH_SIZE for this run"
+        description: "LEAD_BATCH_SIZE (start with 3 for first runs, 20 once stable)"
         required: false
-        default: ""
+        default: "3"
 
 concurrency:
   group: jobdigger-daily
@@ -66,10 +66,16 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SUPABASE_BUCKET: ${{ vars.SUPABASE_BUCKET || 'jobdigger-pdfs' }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          LEAD_BATCH_SIZE: ${{ github.event.inputs.lead_batch_size || vars.LEAD_BATCH_SIZE || '20' }}
+          LEAD_BATCH_SIZE: ${{ github.event.inputs.lead_batch_size || vars.LEAD_BATCH_SIZE || '3' }}
           CANARY_EMAIL: ${{ vars.CANARY_EMAIL || '' }}
-          MIN_ICP_SCORE: ${{ vars.MIN_ICP_SCORE || '90' }}
-        run: python scripts/daily_automation.py
+          MIN_ICP_SCORE: ${{ vars.MIN_ICP_SCORE || '65' }}
+        run: |
+          python scripts/daily_automation.py 2>&1 | tee /tmp/run_output.log
+          # Extract key metrics for Slack
+          grep -E "Loaded|ICP qualified|Dedup|leads OK|FAILED" /tmp/run_output.log > /tmp/run_summary.log || true
+          echo "RUN_SUMMARY<<EOF" >> $GITHUB_ENV
+          cat /tmp/run_summary.log >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Upload logs artifact
         if: always()
@@ -93,6 +99,7 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
+          SUMMARY=$(echo "${RUN_SUMMARY:-(no summary)}" | head -10 | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
           curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\":white_check_mark: JobDigger V3 daily run OK — ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            --data "{\"text\":\":white_check_mark: *JobDigger V3 run OK*\n\`\`\`${SUMMARY}\`\`\`\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>\"}" \
             "$SLACK_WEBHOOK_URL"
