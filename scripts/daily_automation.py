@@ -444,13 +444,24 @@ class ICPFilter:
         return any(kw in title for kw in self.EXCLUDED_VACANCY_KEYWORDS)
 
     def _sbi_int(self, v: dict[str, Any]) -> int | None:
+        """Parse + normalize SBI code to level-2 (4-digit) for range matching.
+
+        JobDigger may store SBI as 2-digit (27), 3-digit (271), 4-digit (2711),
+        or 5-6-digit (27110, 711203). We normalize to level-2 (× 100 or × 10)
+        so range checks like (2000, 3399) work on all variants.
+        """
         sbi_raw = v.get("sbi_code")
         if sbi_raw is None or (isinstance(sbi_raw, float) and sbi_raw != sbi_raw):
             return None
         try:
-            return int(float(str(sbi_raw)))
+            code = int(float(str(sbi_raw)))
         except (TypeError, ValueError):
             return None
+        if code < 100:
+            code = code * 100  # 27 -> 2700
+        elif code < 1000:
+            code = code * 10   # 271 -> 2710
+        return code
 
     def _has_excluded_sbi(self, v: dict[str, Any]) -> bool:
         sbi = self._sbi_int(v)
