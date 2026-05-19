@@ -304,11 +304,15 @@ class LemlistUploader:
             timeout=30,
         )
         if response.status_code == 400:
-            # Check for non-fatal 400 errors (already exists, graveyard, etc)
             error_text = response.text.lower()
-            if any(variant in error_text for variant in ["already", "exists", "duplicate", "graveyard", "unsubscribed"]):
-                self.log.info(f"Lead {lead['email']} rejected (non-fatal): {response.text[:100]}")
-                return {"_id": f"skipped-{lead['email']}", "status": "skipped"}
+            # Graveyard/unsubscribed = terminal, never retry
+            if any(variant in error_text for variant in ["graveyard", "unsubscribed"]):
+                self.log.info(f"Lead {lead['email']} skipped (unsubscribed): {response.text[:100]}")
+                return {"_id": f"skipped-{lead['email']}", "status": "unsubscribed"}
+            # Already in campaign = update existing lead with new PDF URLs
+            if any(variant in error_text for variant in ["already", "exists", "duplicate"]):
+                self.log.info(f"Lead {lead['email']} exists — updating with new fields")
+                return self._update_lead(lead)
             # Other 400 errors are fatal — log and raise
             try:
                 error_detail = response.json()
@@ -317,11 +321,27 @@ class LemlistUploader:
                 self.log.error(f"Lemlist 400 error for {lead['email']} (no JSON body): {response.text}")
             response.raise_for_status()
         elif response.status_code >= 400:
-            # Any other non-2xx error
             self.log.error(f"Lemlist API error {response.status_code} for {lead['email']}: {response.text[:200]}")
             response.raise_for_status()
 
         return response.json()
+
+    def _update_lead(self, lead: dict[str, Any]) -> dict[str, Any]:
+        """PATCH an existing lead to refresh custom fields (PDF URLs etc)."""
+        url = f"{self.API_BASE}/campaigns/{self.cfg.lemlist_campaign_id}/leads/{lead['email']}"
+        response = requests.patch(
+            url,
+            auth=("", self.cfg.lemlist_api_key),
+            json=lead,
+            timeout=30,
+        )
+        if response.status_code >= 400:
+            self.log.warning(f"Lemlist PATCH failed for {lead['email']} ({response.status_code}): {response.text[:200]}")
+            return {"_id": f"update-failed-{lead['email']}", "status": "update_failed"}
+        self.log.info(f"Lead {lead['email']} updated with new fields")
+        result = response.json() if response.text else {}
+        result["status"] = "updated"
+        return result
 
 
 # ---------------------------------------------------------------------------
