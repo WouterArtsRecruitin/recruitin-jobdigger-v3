@@ -343,6 +343,15 @@ class ICPFilter:
         "materieelbeheerder",
     ]
 
+    # Conditional keywords: count ONLY if company is in a tech sector or preferred SBI.
+    # Without sector context these are too generic ("manager", "lead") and would let
+    # non-technical leadership roles through.
+    CONDITIONAL_VACANCY_KEYWORDS = [
+        "manager", "head of", "director", "lead", "leider",
+        "adviseur", "advisor", "consultant", "specialist",
+        "supervisor", "chef", "hoofd",
+    ]
+
     EXCLUDED_SBI = [
         (6200, 6299), (6300, 6399),
         (6400, 6499), (6500, 6599),
@@ -419,7 +428,12 @@ class ICPFilter:
 
     def _has_required_vacancy_keyword(self, v: dict[str, Any]) -> bool:
         title = str(v.get("title") or "").lower()
-        return any(kw in title for kw in self.REQUIRED_VACANCY_KEYWORDS)
+        if any(kw in title for kw in self.REQUIRED_VACANCY_KEYWORDS):
+            return True
+        # Conditional keywords only count when company is clearly in a tech sector
+        if any(kw in title for kw in self.CONDITIONAL_VACANCY_KEYWORDS):
+            return self._has_preferred_sbi(v) or self._has_icp_sector(v)
+        return False
 
     def _has_excluded_keyword(self, v: dict[str, Any]) -> bool:
         company = str(v.get("company") or "").lower()
