@@ -41,10 +41,8 @@ Name: `JobDigger Daily Email → Supabase`
 ### 3. Filter step: Only match JobDigger emails
 
 Add a Zapier "Filter" step that only continues if:
-- **Sender Email Contains** → `jobdigger` (case-insensitive)
+- **Sender Email** (exact) → `noreply@jobdigger.nl`
 - AND **Has Attachments** → `true`
-
-Adjust the sender filter to match the exact JobDigger sender address once you know it (e.g., `noreply@jobdigger.com`).
 
 ### 4. Action: Files by Zapier — Read Attachment
 
