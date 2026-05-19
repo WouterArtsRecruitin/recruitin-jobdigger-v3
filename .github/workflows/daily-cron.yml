@@ -38,6 +38,12 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
+      - name: Fetch JobDigger Excel from Supabase Storage
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python scripts/fetch_jobdigger_input.py
+
       - name: Prepare input data (Excel preferred, JSON fallback)
         run: |
           mkdir -p data
