@@ -310,7 +310,7 @@ class ICPFilter:
         "randstad", "tempo-team", "tempoteam", "adecco", "manpower", "olympia",
         "youngcapital", "startpeople", "start-people", "yacht", "brunel", "huxley",
         "synsel", "usg", "hays", "luba", "timing", "driessen", "continu", "maandag",
-        "covebo", "actiefwerkt", "tence", "bmc.nl",
+        "covebo", "actiefwerkt", "tence", "bmc.nl", "westerhof",
     ]
 
     # Competitor/uitzendbureau op BEDRIJFSNAAM (V1 COMPETITOR_PATTERNS, word-boundary).
@@ -868,30 +868,48 @@ def slugify(value: str) -> str:
     return "".join(c if c.isalnum() else "_" for c in value).strip("_").lower()
 
 
+# Freemail-domeinen: hier NIET op domein dedupen (anders vallen losse personen samen).
+FREEMAIL_DOMAINS = {
+    "gmail.com", "googlemail.com", "hotmail.com", "hotmail.nl", "outlook.com",
+    "live.nl", "live.com", "icloud.com", "me.com", "ziggo.nl", "kpnmail.nl",
+    "telfort.nl", "planet.nl", "home.nl", "xs4all.nl", "yahoo.com", "casema.nl",
+}
+
+
 def collapse_by_company(vacancies: list[dict[str, Any]], log: logging.Logger) -> list[dict[str, Any]]:
-    """Houd max. 1 vacature per bedrijf (en per contact-email).
+    """Houd max. 1 vacature per organisatie.
 
     De input is al op ICP-score gesorteerd (hoog->laag), dus de eerste die we
-    per bedrijf zien is de best scorende. Voorkomt dat eenzelfde bedrijf/inbox
-    meerdere losse mails krijgt voor verschillende vacatures.
+    per organisatie zien is de best scorende. Dedup op:
+      - bedrijfsnaam, en
+      - volledige contact-email, en
+      - e-maildomein (vangt multi-vestiging zoals Breman Kampen/Zwolle @breman.nl;
+        freemail-domeinen uitgezonderd om losse personen niet samen te voegen).
     """
     seen_company: set[str] = set()
     seen_email: set[str] = set()
+    seen_domain: set[str] = set()
     out: list[dict[str, Any]] = []
     dropped = 0
     for v in vacancies:
         company = (v.get("company") or "").strip().lower()
         email = (v.get("contact_email") or "").strip().lower()
-        if (company and company in seen_company) or (email and email in seen_email):
+        domain = email.split("@", 1)[1] if "@" in email else ""
+        dom_key = domain if domain and domain not in FREEMAIL_DOMAINS else ""
+        if ((company and company in seen_company)
+                or (email and email in seen_email)
+                or (dom_key and dom_key in seen_domain)):
             dropped += 1
             continue
         if company:
             seen_company.add(company)
         if email:
             seen_email.add(email)
+        if dom_key:
+            seen_domain.add(dom_key)
         out.append(v)
     log.info(
-        "Company-dedup: %d bedrijven (best scorende vacature elk) | %d dubbele vacatures samengevoegd",
+        "Company-dedup: %d organisaties (best scorende vacature elk) | %d dubbele samengevoegd",
         len(out), dropped,
     )
     return out
