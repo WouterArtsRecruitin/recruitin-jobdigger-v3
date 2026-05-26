@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       lead_batch_size:
-        description: "LEAD_BATCH_SIZE (start with 3 for first runs, 20 once stable)"
+        description: "LEAD_BATCH_SIZE (30 = dagbatch; ~25 min runtime)"
         required: false
-        default: "3"
+        default: "30"
 
 concurrency:
   group: jobdigger-daily
@@ -18,7 +18,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
