@@ -1,23 +1,27 @@
-# Touch 2 — Doelgroep-rapport (dag 2)
+# Touch 2 — Doelgroep-rapport (dag 2)  [HERSCHREVEN]
 
-**Subject:** Wie solliciteert op {{jobTitle}} in {{city}}?
+**Subject:** Wie solliciteert eigenlijk op {{jobTitle}} in {{city}}?
 
 **Body (plain text):**
 
-Hi {{firstName|Beste}},
+Beste {{firstName|collega}},
 
-Vorige week stuurde ik je de vacature-analyse. Nu het doelgroepenrapport — wie is de ideale kandidaat, en waar vind je ze?
+Een paar dagen geleden stuurde ik je de vacature-analyse. Dit is het tweede deel: het doelgroepenrapport — wie is de ideale kandidaat voor jullie {{jobTitle}}, en waar zit-ie?
 
-Dit rapport toont:
-- Profielbeschrijving (ervaring, skills, studie)
-- Waar deze kandidaten zich bevinden (locaties, sectoren, bedrijven)
-- 3-5 kanalen om ze te bereiken
-- Salarisverwachting in de regio
+Wat erin staat:
+• Profiel van de kandidaat (ervaring, skills, opleiding)
+• Waar ze zich bevinden — en hoe schaars ze zijn ({{schaarste|hoge druk}})
+• De kanalen die voor dit profiel werken (top: {{topKanaal|referral}})
+• Salarisverwachting in de regio ({{salarisMedior|medior-niveau}})
 
-PDF: {{doelgroepPdfUrl}}
+Open je doelgroepenrapport (PDF): {{doelgroepPdfUrl}}
 
-Veel succes met je werving — en bel me als je wat niet snapt.
+Als je 'm naast jullie huidige aanpak legt: zit het venijn bij het bereik, het profiel, of het aanbod? Eén regel terug en ik denk mee — of plan 15 min: https://calendly.com/wouter-arts-/belafspraak-met-wouter
 
 Groet,
 Wouter Arts — Recruitin
-06-14314593 | warts@recruitin.nl
+06-14314593 · warts@recruitin.nl
+
+—
+Recruitin B.V. · KvK 75303647 · Doesburg
+Je ontvangt dit omdat {{companyName}} een vacature voor {{jobTitle}} open heeft staan. Liever niet meer? Onderaan uitschrijven.

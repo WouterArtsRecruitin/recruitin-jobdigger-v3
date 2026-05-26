@@ -6,113 +6,113 @@
 <style>
   @page { size: A4; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Inter', -apple-system, sans-serif; color: #1a1a1a; font-size: 10pt; line-height: 1.5; background: white; }
-  .page { width: 210mm; min-height: 297mm; page-break-after: always; position: relative; background: white; }
+  body { font-family: 'Inter', -apple-system, sans-serif; color: #221a15; font-size: 10pt; line-height: 1.5; background: #fff8f5; }
+  .page { width: 210mm; min-height: 296mm; page-break-after: always; position: relative; background: #fff8f5; }
   .page:last-child { page-break-after: auto; }
   .page-inner { padding: 14mm 18mm 25mm 18mm; }
 
-  .top-bar { background: #FF1493; color: white; padding: 6pt 18mm; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.15em; text-transform: uppercase; display: flex; justify-content: space-between; }
+  .top-bar { background: #703800; color: #fff; padding: 6pt 18mm; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.15em; text-transform: uppercase; display: flex; justify-content: space-between; }
   .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12pt; }
-  .logo-row { display: flex; align-items: center; gap: 6pt; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 9pt; letter-spacing: 0.1em; color: #1a1a1a; font-weight: 600; }
-  .logo-row::before { content: ""; width: 7pt; height: 7pt; background: #FF1493; border-radius: 50%; display: inline-block; }
-  .page-num-top { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #888; }
+  .logo-row { display: flex; align-items: center; gap: 6pt; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 9pt; letter-spacing: 0.1em; color: #221a15; font-weight: 600; }
+  .logo-row::before { content: ""; width: 7pt; height: 7pt; background: #EF7D00; border-radius: 50%; display: inline-block; }
+  .page-num-top { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #8a7c70; }
 
   /* PAGE 1 */
-  .breadcrumb { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #888; text-transform: uppercase; margin-bottom: 8pt; }
+  .breadcrumb { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #8a7c70; text-transform: uppercase; margin-bottom: 8pt; }
   h1.title { font-size: 60pt; font-weight: 800; line-height: 0.95; letter-spacing: -0.04em; margin-bottom: 14pt; }
-  h1.title .accent { color: #FF1493; }
-  .subtitle { font-size: 11pt; color: #444; margin-bottom: 22pt; max-width: 140mm; line-height: 1.5; }
-  .subtitle strong { font-weight: 700; color: #1a1a1a; }
+  h1.title .accent { color: #EF7D00; }
+  .subtitle { font-size: 11pt; color: #544338; margin-bottom: 22pt; max-width: 140mm; line-height: 1.5; }
+  .subtitle strong { font-weight: 700; color: #221a15; }
 
-  .exec-summary-card { background: #f5f5f7; border-radius: 8pt; padding: 18pt 22pt; margin-bottom: 18pt; display: flex; gap: 22pt; align-items: center; }
-  .score-circle { width: 80pt; height: 80pt; border-radius: 50%; flex-shrink: 0; position: relative; background: white; }
+  .exec-summary-card { background: #ffffff; border: 1px solid #efe1d6; box-shadow: 0 6pt 18pt rgba(112,56,0,0.06); border-radius: 14pt; padding: 18pt 22pt; margin-bottom: 18pt; display: flex; gap: 22pt; align-items: center; }
+  .score-circle { width: 80pt; height: 80pt; border-radius: 50%; flex-shrink: 0; position: relative; background: #fff8f5; }
   .score-arc-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
   .score-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 1; }
-  .score-number { font-size: 26pt; font-weight: 800; color: #1a1a1a; line-height: 1; }
-  .score-label { font-size: 8pt; color: #666; font-weight: 500; margin-top: 2pt; }
+  .score-number { font-size: 26pt; font-weight: 800; color: #221a15; line-height: 1; }
+  .score-label { font-size: 8pt; color: #6b5d50; font-weight: 500; margin-top: 2pt; }
   .exec-summary-text { flex: 1; }
-  .exec-summary-text .label { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 6pt; }
-  .exec-summary-text p { font-size: 10pt; line-height: 1.55; color: #1a1a1a; }
+  .exec-summary-text .label { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #EF7D00; text-transform: uppercase; margin-bottom: 6pt; }
+  .exec-summary-text p { font-size: 10pt; line-height: 1.55; color: #221a15; }
 
   .kpi-row { display: flex; gap: 8pt; margin-bottom: 22pt; }
-  .kpi-tile { flex: 1; text-align: center; padding: 16pt 8pt; background: #f5f5f7; border-radius: 6pt; }
-  .kpi-value { font-size: 28pt; font-weight: 800; line-height: 1; margin-bottom: 6pt; color: #1a1a1a; }
-  .kpi-value.pink { color: #FF1493; }
-  .kpi-value.orange { color: #E8630A; }
-  .kpi-value.green { color: #00B86B; }
-  .kpi-label { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.12em; color: #555; text-transform: uppercase; line-height: 1.3; }
+  .kpi-tile { flex: 1; text-align: center; padding: 16pt 8pt; background: #ffffff; border: 1px solid #efe1d6; border-radius: 10pt; }
+  .kpi-value { font-size: 28pt; font-weight: 800; line-height: 1; margin-bottom: 6pt; color: #221a15; }
+  .kpi-value.pink { color: #703800; }
+  .kpi-value.orange { color: #EF7D00; }
+  .kpi-value.green { color: #2E7D32; }
+  .kpi-label { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.12em; color: #6b5d50; text-transform: uppercase; line-height: 1.3; }
 
-  .divider { height: 1pt; background: #e0e0e0; margin: 14pt 0; }
-  .arrow-link { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 12pt; }
+  .divider { height: 1pt; background: #ecdfd4; margin: 14pt 0; }
+  .arrow-link { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #EF7D00; text-transform: uppercase; margin-bottom: 12pt; }
   .highlights-row { display: flex; gap: 18pt; }
   .highlight-col { flex: 1; }
-  .highlight-num { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 4pt; }
+  .highlight-num { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.15em; color: #EF7D00; text-transform: uppercase; margin-bottom: 4pt; }
   .highlight-title { font-size: 14pt; font-weight: 800; margin-bottom: 4pt; line-height: 1.2; }
-  .highlight-meta { font-size: 9pt; color: #666; line-height: 1.4; }
+  .highlight-meta { font-size: 9pt; color: #6b5d50; line-height: 1.4; }
 
-  .footer { position: absolute; bottom: 0; left: 0; right: 0; padding: 10pt 18mm; border-top: 3pt solid #FF1493; display: flex; justify-content: space-between; align-items: center; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; }
-  .footer-left strong { color: #FF1493; font-weight: 700; }
-  .footer-right { color: #888; letter-spacing: 0.12em; text-transform: uppercase; }
+  .footer { position: absolute; bottom: 0; left: 0; right: 0; padding: 10pt 18mm; border-top: 3pt solid #703800; display: flex; justify-content: space-between; align-items: center; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; }
+  .footer-left strong { color: #703800; font-weight: 700; }
+  .footer-right { color: #8a7c70; letter-spacing: 0.12em; text-transform: uppercase; }
 
   /* PAGE 2 */
-  .section-label { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 8pt; }
-  h2.section-title { font-size: 28pt; font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 6pt; }
-  .section-subtitle { font-size: 10pt; color: #555; margin-bottom: 16pt; }
-  .insight-card { background: #f5f5f7; border-radius: 8pt; padding: 14pt 18pt; margin-bottom: 10pt; }
-  .insight-header { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 10pt; }
+  .section-label { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #EF7D00; text-transform: uppercase; margin-bottom: 6pt; }
+  h2.section-title { font-size: 22pt; font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 4pt; }
+  .section-subtitle { font-size: 9pt; color: #6b5d50; margin-bottom: 9pt; }
+  .insight-card { background: #ffffff; border: 1px solid #efe1d6; box-shadow: 0 6pt 18pt rgba(112,56,0,0.05); border-radius: 14pt; padding: 10pt 14pt; margin-bottom: 7pt; }
+  .insight-header { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.15em; color: #EF7D00; text-transform: uppercase; margin-bottom: 6pt; }
 
-  /* Salary bars - bouw style */
-  .salary-bar-row { display: flex; align-items: center; gap: 12pt; margin-bottom: 8pt; }
+  /* Salary bars */
+  .salary-bar-row { display: flex; align-items: center; gap: 12pt; margin-bottom: 5pt; }
   .salary-niveau { flex: 0 0 60pt; font-weight: 600; font-size: 9pt; }
-  .salary-bar-container { flex: 1; height: 14pt; background: #e0e0e0; border-radius: 7pt; position: relative; }
-  .salary-range-bar { position: absolute; height: 100%; background: #FFB3D9; border-radius: 7pt; }
-  .salary-median-mark { position: absolute; top: -2pt; width: 4pt; height: 18pt; background: #1a1a1a; border-radius: 2pt; }
-  .salary-range-label { flex: 0 0 130pt; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; color: #666; text-align: right; }
-  .salary-range-label strong { color: #1a1a1a; font-weight: 700; }
-  .market-shortage { margin-top: 10pt; padding-top: 8pt; border-top: 1px solid #c8c8c8; font-size: 9pt; color: #555; }
-  .market-shortage strong { color: #1a1a1a; }
-  .trend-up { color: #FF1493; font-weight: 700; }
+  .salary-bar-container { flex: 1; height: 14pt; background: #f0e4da; border-radius: 7pt; position: relative; }
+  .salary-range-bar { position: absolute; height: 100%; background: #f3c69b; border-radius: 7pt; }
+  .salary-median-mark { position: absolute; top: -2pt; width: 4pt; height: 18pt; background: #221a15; border-radius: 2pt; }
+  .salary-range-label { flex: 0 0 130pt; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; color: #6b5d50; text-align: right; }
+  .salary-range-label strong { color: #221a15; font-weight: 700; }
+  .market-shortage { margin-top: 6pt; padding-top: 6pt; border-top: 1px solid #e2d3c6; font-size: 9pt; color: #6b5d50; }
+  .market-shortage strong { color: #221a15; }
+  .trend-up { color: #c2410c; font-weight: 700; }
 
-  /* Channel rows - magenta bars */
-  .channel-row { display: flex; align-items: center; gap: 12pt; padding: 8pt 0; border-top: 1px solid #c8c8c8; }
+  /* Channel rows */
+  .channel-row { display: flex; align-items: center; gap: 12pt; padding: 5pt 0; border-top: 1px solid #e2d3c6; }
   .channel-row:first-of-type { border-top: none; }
   .channel-info { flex: 1; }
   .channel-name { font-size: 10pt; font-weight: 700; margin-bottom: 2pt; }
-  .channel-meta { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; color: #888; letter-spacing: 0.05em; text-transform: uppercase; }
-  .channel-bar-container { flex: 0 0 150pt; height: 8pt; background: #e0e0e0; border-radius: 4pt; overflow: hidden; }
-  .channel-bar-fill { height: 100%; background: #FF1493; border-radius: 4pt; }
-  .channel-score { flex: 0 0 30pt; text-align: right; font-family: 'JetBrains Mono', 'Courier New', monospace; font-weight: 700; color: #1a1a1a; font-size: 11pt; }
+  .channel-meta { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; color: #8a7c70; letter-spacing: 0.05em; text-transform: uppercase; }
+  .channel-bar-container { flex: 0 0 150pt; height: 8pt; background: #f0e4da; border-radius: 4pt; overflow: hidden; }
+  .channel-bar-fill { height: 100%; background: #EF7D00; border-radius: 4pt; }
+  .channel-score { flex: 0 0 30pt; text-align: right; font-family: 'JetBrains Mono', 'Courier New', monospace; font-weight: 700; color: #221a15; font-size: 11pt; }
 
   /* Market pressure */
-  .pressure-bar { height: 16pt; border-radius: 8pt; background: linear-gradient(90deg, #00B86B 0%, #FFD700 40%, #FFA500 65%, #FF1493 90%, #C41E3A 100%); position: relative; margin: 10pt 0 8pt 0; }
-  .pressure-marker { position: absolute; top: -3pt; width: 4pt; height: 22pt; background: #1a1a1a; border-radius: 2pt; }
-  .pressure-axis { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; color: #888; letter-spacing: 0.1em; }
-  .pressure-center { text-align: center; font-weight: 700; color: #1a1a1a; font-size: 10pt; }
-  .pressure-detail { margin-top: 10pt; padding-top: 8pt; border-top: 1px solid #c8c8c8; font-size: 9pt; color: #555; }
-  .pressure-detail strong { color: #1a1a1a; }
-  .premium-badge { color: #FF1493; font-weight: 700; }
+  .pressure-bar { height: 16pt; border-radius: 8pt; background: linear-gradient(90deg, #2E7D32 0%, #FFD23F 45%, #EF7D00 75%, #BA1A1A 100%); position: relative; margin: 6pt 0 5pt 0; }
+  .pressure-marker { position: absolute; top: -3pt; width: 4pt; height: 22pt; background: #221a15; border-radius: 2pt; }
+  .pressure-axis { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; color: #8a7c70; letter-spacing: 0.1em; }
+  .pressure-center { text-align: center; font-weight: 700; color: #221a15; font-size: 10pt; }
+  .pressure-detail { margin-top: 6pt; padding-top: 6pt; border-top: 1px solid #e2d3c6; font-size: 9pt; color: #6b5d50; }
+  .pressure-detail strong { color: #221a15; }
+  .premium-badge { color: #c2410c; font-weight: 700; }
 
   /* PAGE 3 */
-  .pre-title { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #FF1493; text-transform: uppercase; margin-bottom: 10pt; text-align: center; }
+  .pre-title { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.15em; color: #EF7D00; text-transform: uppercase; margin-bottom: 10pt; text-align: center; }
   h2.page3-title { font-size: 32pt; font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 6pt; text-align: center; }
-  h2.page3-title .accent { color: #FF1493; }
-  .page3-subtitle { font-size: 10pt; color: #555; margin-bottom: 22pt; text-align: center; max-width: 130mm; margin-left: auto; margin-right: auto; }
+  h2.page3-title .accent { color: #EF7D00; }
+  .page3-subtitle { font-size: 10pt; color: #6b5d50; margin-bottom: 22pt; text-align: center; max-width: 130mm; margin-left: auto; margin-right: auto; }
   .module-list { margin: 18pt 0; }
-  .module-item { display: flex; align-items: center; justify-content: space-between; padding: 10pt 0; border-top: 1px solid #e0e0e0; }
-  .module-item:last-child { border-bottom: 1px solid #e0e0e0; }
+  .module-item { display: flex; align-items: center; justify-content: space-between; padding: 10pt 0; border-top: 1px solid #ecdfd4; }
+  .module-item:last-child { border-bottom: 1px solid #ecdfd4; }
   .module-left { display: flex; gap: 14pt; align-items: center; }
-  .module-num { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; color: #FF1493; font-weight: 700; }
-  .module-name { font-size: 10pt; color: #1a1a1a; font-weight: 600; }
-  .module-lock { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.1em; color: #888; text-transform: uppercase; }
+  .module-num { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 8pt; color: #EF7D00; font-weight: 700; }
+  .module-name { font-size: 10pt; color: #221a15; font-weight: 600; }
+  .module-lock { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.1em; color: #8a7c70; text-transform: uppercase; }
 
   .stats-row { display: flex; justify-content: center; gap: 14pt; margin: 24pt 0; }
-  .stat-block { background: #f5f5f7; border-radius: 12pt; padding: 16pt 28pt; text-align: center; }
-  .stat-block .num { font-size: 32pt; font-weight: 800; color: #FF1493; line-height: 1; }
-  .stat-block .lbl { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.15em; color: #555; text-transform: uppercase; margin-top: 6pt; }
+  .stat-block { background: #ffffff; border: 1px solid #efe1d6; border-radius: 14pt; padding: 16pt 28pt; text-align: center; }
+  .stat-block .num { font-size: 32pt; font-weight: 800; color: #703800; line-height: 1; }
+  .stat-block .lbl { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 7pt; letter-spacing: 0.15em; color: #6b5d50; text-transform: uppercase; margin-top: 6pt; }
 
   .cta-block { text-align: center; margin: 18pt 0 14pt 0; }
-  .cta-btn { display: inline-block; background: #FF1493; color: white; padding: 14pt 40pt; border-radius: 40pt; font-size: 12pt; font-weight: 700; text-decoration: none; margin-bottom: 10pt; }
-  .cta-sub { font-size: 9pt; color: #666; line-height: 1.5; }
+  .cta-btn { display: inline-block; background: #703800; color: white; padding: 14pt 40pt; border-radius: 40pt; font-size: 12pt; font-weight: 700; text-decoration: none; margin-bottom: 10pt; }
+  .cta-sub { font-size: 9pt; color: #6b5d50; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -135,8 +135,8 @@
     <div class="exec-summary-card">
       <div class="score-circle">
         <svg class="score-arc-svg" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="44" fill="none" stroke="#d8d8d8" stroke-width="8"/>
-          <circle cx="50" cy="50" r="44" fill="none" stroke="#FF1493" stroke-width="8"
+          <circle cx="50" cy="50" r="44" fill="none" stroke="#f0e4da" stroke-width="8"/>
+          <circle cx="50" cy="50" r="44" fill="none" stroke="#EF7D00" stroke-width="8"
                   stroke-dasharray="{{ (haalbaarheid_score * 2.764) | round(1) }} 276.4"
                   stroke-linecap="round"/>
         </svg>
@@ -212,7 +212,7 @@
 
     <div class="insight-card">
       <div class="insight-header">02 · Top wervingskanalen — effectiviteit /10</div>
-      {% for channel in top_wervingskanalen %}
+      {% for channel in top_wervingskanalen[:6] %}
       <div class="channel-row">
         <div class="channel-info">
           <div class="channel-name">{{ channel.naam }}</div>

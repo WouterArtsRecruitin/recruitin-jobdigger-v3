@@ -1,17 +1,21 @@
-# Touch 3 — Soft follow-up (dag 5-6)
+# Touch 3 — Soft follow-up (dag 5-6)  [HERSCHREVEN]
 
-**Subject:** Korte vraag over je {{jobTitle}}-rapport
+**Subject:** Klopte de score voor jullie {{jobTitle}}?
 
 **Body (plain text):**
 
-Hi {{firstName|Beste}},
+Beste {{firstName|collega}},
 
-Vorige week stuurde ik je een korte analyse van jullie {{jobTitle}}-vacature — score, salaris-positie en de eerste 5 acties.
+Vorige week stuurde ik je twee korte rapporten over jullie {{jobTitle}}-vacature: de markt-score (jullie zaten op {{vacatureScore|—}}/100) en wie de ideale kandidaat is.
 
-Heb je 'm nog kunnen openen? Ben benieuwd of de cijfers herkenbaar zijn voor wat jullie nu zien in de werving.
+Heb je ze kunnen openen? Ik ben vooral benieuwd of het beeld herkenbaar is — of dat de praktijk anders voelt.
 
-Een korte reactie ("ja/nee/nog niet") is genoeg — dan weet ik of ik je niet voor niets bel.
+Een korte reactie ("ja / nee / nog niet") is genoeg. Geen reactie? Dan laat ik je met rust.
 
 Groet,
 Wouter Arts — Recruitin
-06-14314593 | warts@recruitin.nl
+06-14314593 · warts@recruitin.nl
+
+—
+Recruitin B.V. · KvK 75303647 · Doesburg
+Liever geen vervolgmails? Onderaan uitschrijven.

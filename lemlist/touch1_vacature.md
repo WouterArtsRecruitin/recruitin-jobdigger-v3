@@ -1,22 +1,26 @@
-# Touch 1 — Vacature-analyse (dag 0)
+# Touch 1 — Vacature-analyse (dag 0)  [HERSCHREVEN]
 
-**Subject:** Kandidaatprofiel voor {{jobTitle}} in {{city}}
+**Subject:** Je vacature-analyse voor {{jobTitle}} in {{city}}
 
 **Body (plain text):**
 
-Hi {{firstName|Beste}},
+Beste {{firstName|collega}},
 
-Bijgevoegd je snelle analyse van de {{jobTitle}}-vacature bij {{companyName}}.
+Ik heb de {{jobTitle}}-vacature van {{companyName}} door onze analyse gehaald — een objectieve blik op hoe 'm nu in de markt presteert. Geen sales, gewoon de cijfers.
 
-Het rapport toont:
-- Score op 8 aantrekkingsdimensies
-- Waar jullie sterk staan, waar je voet dwars kan zetten
-- Eerste 5 acties voor meer aanvragen
+In het rapport (3 pagina's):
+• Score op 8 aantrekkingsdimensies — jullie kwamen uit op {{vacatureScore|een opvallende score}}/100
+• Sterkste punt: {{sterksteDimensie|—}} · grootste lek: {{zwaksteDimensie|—}}
+• De eerste 5 concrete acties voor meer en betere sollicitanten
 
-PDF: {{vacaturePdfUrl}}
+Open je analyse (PDF): {{vacaturePdfUrl}}
 
-Veel sterkte met de werving — en mocht je vragen hebben, je kent me.
+Benieuwd of de score klopt met jullie eigen gevoel. Eén regel terug is genoeg — of plan direct 15 min: https://calendly.com/wouter-arts-/belafspraak-met-wouter
 
 Groet,
 Wouter Arts — Recruitin
-06-14314593 | warts@recruitin.nl
+06-14314593 · warts@recruitin.nl
+
+—
+Recruitin B.V. · KvK 75303647 · Doesburg
+Je ontvangt dit omdat {{companyName}} een vacature voor {{jobTitle}} open heeft staan. Liever niet meer? Onderaan uitschrijven.

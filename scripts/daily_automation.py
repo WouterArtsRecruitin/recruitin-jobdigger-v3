@@ -875,15 +875,37 @@ def process_lead(
         touch1_url = storage.upload(touch1_pdf, f"{lead_id}/touch1_vacature.pdf")
         touch2_url = storage.upload(touch2_pdf, f"{lead_id}/touch2_doelgroep.pdf")
         lead_email = canary_email or (vacancy.get("contact_email") or f"hr@{vacancy.get('company_domain', 'example.com')}")
+
+        # Per-lead copy variables (uit de twee distill-outputs) — met veilige defaults.
+        vac_kpi = vacature_data.get("kpi", {})
+        dg_h = doelgroep_data.get("hoogtepunten_pag1", {})
+        dg_conc = doelgroep_data.get("marktdruk_index", {}).get("top_concurrent", {})
+        # Role-mailbox flag (info@/hr@/recruitment@/...) — alleen taggen, niet skippen.
+        _local = (lead_email.split("@", 1)[0] or "").lower()
+        is_role_inbox = any(_local.startswith(p) for p in
+                            ("hr", "info", "recruitment", "recruiting", "sollicit", "vacature", "jobs", "career"))
+
         lead_payload = {
             "email": lead_email,
-            "firstName": vacancy.get("contact_first_name", "") or "Contact",
+            "firstName": vacancy.get("contact_first_name", "") or "",  # leeg => Lemlist |fallback werkt
             "lastName": vacancy.get("contact_last_name", "") or "",
             "companyName": vacancy.get("company", "") or "Unknown",
             "jobTitle": vacancy.get("title", "") or "Role",
             "city": vacancy.get("location", "") or "",
             "vacaturePdfUrl": touch1_url,
             "doelgroepPdfUrl": touch2_url,
+            # --- per-lead copy variabelen (touch 1-4) ---
+            "vacatureScore": str(vacature_data.get("score_totaal", "")),
+            "sterksteDimensie": (vacature_data.get("sterkste_punt") or {}).get("label", ""),
+            "zwaksteDimensie": (vacature_data.get("zwakste_punt") or {}).get("label", ""),
+            "aanbodVraag": vac_kpi.get("aanbod_vraag_ratio", ""),
+            "schaarste": (doelgroep_data.get("kpi") or {}).get("schaarste_label", ""),
+            "topKanaal": (dg_h.get("top_kanaal") or {}).get("naam", ""),
+            "salarisMedior": (dg_h.get("salaris_medior") or {}).get("bedrag", ""),
+            "topConcurrent": dg_conc.get("naam", ""),
+            "concurrentPremie": dg_conc.get("salarispremie", ""),
+            # --- segmentatie/QA ---
+            "isRoleInbox": "true" if is_role_inbox else "false",
         }
         lemlist_result = lemlist.add_lead(lead_payload)
 
