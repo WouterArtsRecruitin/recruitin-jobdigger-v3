@@ -13,6 +13,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sys
 import time
 from dataclasses import dataclass, field
@@ -298,6 +299,35 @@ class ICPFilter:
         "waterschap", "uitleenbureau", "payroll",
     ]
 
+    # Agency/intermediair e-maildomeinen: de vacature staat op naam van een echt
+    # bedrijf, maar het contactadres is van een uitzend-/recruitmentbureau dat de
+    # werving doet (bijv. ...@randstadprofessional.nl). Die mailen = onze dienst aan
+    # een concurrent pitchen. Generieke keywords (V1 RECRUITMENT_DOMAIN_KEYWORDS) +
+    # merknamen (de schakel die V1 miste).
+    AGENCY_EMAIL_DOMAINS = [
+        "recruitment", "uitzend", "detach", "staffing", "werving", "interim",
+        "headhunt", "jobsolutions",
+        "randstad", "tempo-team", "tempoteam", "adecco", "manpower", "olympia",
+        "youngcapital", "startpeople", "start-people", "yacht", "brunel", "huxley",
+        "synsel", "usg", "hays", "luba", "timing", "driessen", "continu", "maandag",
+        "covebo", "actiefwerkt", "tence", "bmc.nl",
+    ]
+
+    # Competitor/uitzendbureau op BEDRIJFSNAAM (V1 COMPETITOR_PATTERNS, word-boundary).
+    COMPETITOR_NAME_PATTERNS = [
+        r"\b(uitzend|detacher|detachering|interim|staffing|payroll)\b",
+        r"\b(recruitment|recruiter|werving\s*&?\s*selectie|w&s)\b",
+        r"\b(hr\s*services|hr\s*solutions|human\s*capital|personnel)\b",
+        r"\b(randstad|manpower|adecco|tempo\s*team|olympia|start\s*people)\b",
+        r"\b(yacht|brunel|huxley|synsel|usn|youngcapital)\b",
+    ]
+
+    # Technische bedrijven die per ongeluk op een competitor-patroon matchen blijven.
+    TECHNICAL_EXEMPTIONS = [
+        "koeltechniek", "klimaattechniek", "installatietechniek",
+        "elektrotechniek", "procestechniek", "milieutechniek",
+    ]
+
     EXCLUDED_VACANCY_KEYWORDS = [
         # Stages / internships / weekend / volunteer
         "stage", "stagiair", "afstudeer", "leerling", "bbl", "internship",
@@ -432,13 +462,15 @@ class ICPFilter:
 
         # Diagnostic counts
         excluded_keyword = sum(1 for v, s in scored if s == 0 and self._has_excluded_keyword(v))
-        excluded_sbi = sum(1 for v, s in scored if s == 0 and not self._has_excluded_keyword(v) and self._has_excluded_sbi(v))
+        agency_email = sum(1 for v, s in scored if s == 0 and not self._has_excluded_keyword(v) and self._is_agency_email(v))
+        competitor = sum(1 for v, s in scored if s == 0 and not self._has_excluded_keyword(v) and not self._is_agency_email(v) and self._is_competitor_name(v))
+        excluded_sbi = sum(1 for v, s in scored if s == 0 and not self._has_excluded_keyword(v) and not self._is_agency_email(v) and not self._is_competitor_name(v) and self._has_excluded_sbi(v))
         no_email = sum(1 for v, s in scored if s >= self.min_score and not self._email_gate(v))
 
         self.log.info(
-            "ICP qualified: %d/%d (min_score=%d) | rejected: %d keyword, %d SBI, %d no-email",
+            "ICP qualified: %d/%d (min_score=%d) | rejected: %d keyword, %d SBI, %d agency-email, %d competitor-naam, %d no-email",
             len(qualified), len(vacancies_list), self.min_score,
-            excluded_keyword, excluded_sbi, no_email,
+            excluded_keyword, excluded_sbi, agency_email, competitor, no_email,
         )
         return qualified
 
@@ -453,6 +485,10 @@ class ICPFilter:
         if self._has_excluded_keyword(v):
             return 0
         if self._has_excluded_vacancy_keyword(v):
+            return 0
+        if self._is_agency_email(v):
+            return 0
+        if self._is_competitor_name(v):
             return 0
         if self._has_excluded_sbi(v):
             return 0
@@ -483,6 +519,23 @@ class ICPFilter:
     def _has_excluded_vacancy_keyword(self, v: dict[str, Any]) -> bool:
         title = str(v.get("title") or "").lower()
         return any(kw in title for kw in self.EXCLUDED_VACANCY_KEYWORDS)
+
+    def _is_agency_email(self, v: dict[str, Any]) -> bool:
+        """Contact-e-mail is van een uitzend-/recruitmentbureau (domein-match)."""
+        email = str(v.get("contact_email") or "").lower()
+        if "@" not in email:
+            return False
+        domain = email.split("@", 1)[1]
+        return any(kw in domain for kw in self.AGENCY_EMAIL_DOMAINS)
+
+    def _is_competitor_name(self, v: dict[str, Any]) -> bool:
+        """Bedrijfsnaam is een uitzendbureau/concurrent (regex, met techniek-uitzondering)."""
+        company = str(v.get("company") or "").lower()
+        if not company:
+            return False
+        if any(tech in company for tech in self.TECHNICAL_EXEMPTIONS):
+            return False
+        return any(re.search(p, company) for p in self.COMPETITOR_NAME_PATTERNS)
 
     def _sbi_int(self, v: dict[str, Any]) -> int | None:
         """Parse + normalize SBI code to level-3 (4-digit) for range matching.
