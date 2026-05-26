@@ -1037,7 +1037,9 @@ def run() -> int:
     dedup.load_blocklist()
     deduplicated = dedup.filter(qualified)
     collapsed = collapse_by_company(deduplicated, log)
-    selected = collapsed[: cfg.lead_batch_size]
+    offset = int(os.environ.get("LEAD_OFFSET", "0"))
+    selected = collapsed[offset: offset + cfg.lead_batch_size]
+    log.info("Selectie: offset=%d, batch=%d -> %d leads van %d beschikbaar", offset, cfg.lead_batch_size, len(selected), len(collapsed))
 
     stats = RunStats()
     for vacancy in selected:
