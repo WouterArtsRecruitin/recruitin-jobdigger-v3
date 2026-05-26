@@ -10,6 +10,10 @@ on:
         description: "LEAD_BATCH_SIZE (30 = dagbatch; ~25 min runtime)"
         required: false
         default: "30"
+      lead_offset:
+        description: "LEAD_OFFSET (start-index; verhoog per batch om door de lijst te lopen)"
+        required: false
+        default: "0"
 
 concurrency:
   group: jobdigger-daily
@@ -67,6 +71,7 @@ jobs:
           SUPABASE_BUCKET: ${{ vars.SUPABASE_BUCKET || 'jobdigger-pdfs' }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           LEAD_BATCH_SIZE: ${{ github.event.inputs.lead_batch_size || vars.LEAD_BATCH_SIZE || '3' }}
+          LEAD_OFFSET: ${{ github.event.inputs.lead_offset || '0' }}
           CANARY_EMAIL: ${{ vars.CANARY_EMAIL || '' }}
           MIN_ICP_SCORE: ${{ vars.MIN_ICP_SCORE || '65' }}
         run: |
