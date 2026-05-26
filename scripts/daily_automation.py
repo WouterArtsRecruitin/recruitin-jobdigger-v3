@@ -815,6 +815,35 @@ def slugify(value: str) -> str:
     return "".join(c if c.isalnum() else "_" for c in value).strip("_").lower()
 
 
+def collapse_by_company(vacancies: list[dict[str, Any]], log: logging.Logger) -> list[dict[str, Any]]:
+    """Houd max. 1 vacature per bedrijf (en per contact-email).
+
+    De input is al op ICP-score gesorteerd (hoog->laag), dus de eerste die we
+    per bedrijf zien is de best scorende. Voorkomt dat eenzelfde bedrijf/inbox
+    meerdere losse mails krijgt voor verschillende vacatures.
+    """
+    seen_company: set[str] = set()
+    seen_email: set[str] = set()
+    out: list[dict[str, Any]] = []
+    dropped = 0
+    for v in vacancies:
+        company = (v.get("company") or "").strip().lower()
+        email = (v.get("contact_email") or "").strip().lower()
+        if (company and company in seen_company) or (email and email in seen_email):
+            dropped += 1
+            continue
+        if company:
+            seen_company.add(company)
+        if email:
+            seen_email.add(email)
+        out.append(v)
+    log.info(
+        "Company-dedup: %d bedrijven (best scorende vacature elk) | %d dubbele vacatures samengevoegd",
+        len(out), dropped,
+    )
+    return out
+
+
 def process_lead(
     vacancy: dict[str, Any],
     prompts: PromptExecutor,
@@ -936,7 +965,8 @@ def run() -> int:
     qualified = icp.filter(vacancies)
     dedup.load_blocklist()
     deduplicated = dedup.filter(qualified)
-    selected = deduplicated[: cfg.lead_batch_size]
+    collapsed = collapse_by_company(deduplicated, log)
+    selected = collapsed[: cfg.lead_batch_size]
 
     stats = RunStats()
     for vacancy in selected:
