@@ -113,11 +113,12 @@ def fetch_reply_items(key: str, cid: str, since: datetime | None, cap: int = 60)
     return items
 
 
-def classify_sentiment(items: list[dict], anthropic_key: str | None) -> dict:
-    """Batch-classificeer replies in interesse/vraag/bezwaar/afwijzing/overig (1 Claude-call)."""
+def classify_sentiment(items: list[dict], anthropic_key: str | None) -> tuple[dict, list[tuple]]:
+    """Batch-classificeer replies. Geeft (counts, [(item, label), ...]) terug."""
     counts = {s: 0 for s in SENTIMENTS}
+    labeled: list[tuple] = []
     if not items or not anthropic_key:
-        return counts
+        return counts, labeled
     try:
         import anthropic
         client = anthropic.Anthropic(api_key=anthropic_key)
@@ -133,12 +134,14 @@ def classify_sentiment(items: list[dict], anthropic_key: str | None) -> dict:
                                       messages=[{"role": "user", "content": prompt}])
         text = "".join(b.text for b in resp.content if b.type == "text").strip()
         text = text[text.find("["): text.rfind("]") + 1]
-        for label in json.loads(text):
+        for item, label in zip(items, json.loads(text)):
             label = str(label).lower().strip()
-            counts[label if label in counts else "overig"] += 1
+            label = label if label in counts else "overig"
+            counts[label] += 1
+            labeled.append((item, label))
     except Exception as e:
         counts["_error"] = str(e)[:120]
-    return counts
+    return counts, labeled
 
 
 def steering_flags(r: dict) -> list[str]:
@@ -158,7 +161,7 @@ def steering_flags(r: dict) -> list[str]:
     return flags or ["✅ Alle rates binnen norm."]
 
 
-def build_message(r: dict, sent_counts: dict, since_label: str) -> str:
+def build_message(r: dict, sent_counts: dict, labeled: list[tuple], since_label: str) -> str:
     sent = r["sent"] or 0
     pct = lambda n: f"{100.0*n/sent:.1f}%" if sent else "—"
     lines = [
@@ -171,6 +174,14 @@ def build_message(r: dict, sent_counts: dict, since_label: str) -> str:
     if sent and r["reply"]:
         sc = " · ".join(f"{k}:{v}" for k, v in sent_counts.items() if k in SENTIMENTS and v)
         lines.append(f"• Reply-sentiment: {sc or '—'}")
+    # Warme replies (interesse/vraag) -> handmatig opvolgen + LinkedIn opzoeken
+    warm = [(it, lab) for it, lab in labeled if lab in ("interesse", "vraag")]
+    if warm:
+        lines.append("*🔥 Warme replies — opvolgen (zoek persoon op LinkedIn):*")
+        for it, lab in warm:
+            who = it.get("from") or "?"
+            prev = (it.get("preview") or "")[:60]
+            lines.append(f"  • [{lab}] {who} — \"{prev}\" → zoek op LinkedIn + persoonlijk reageren")
     lines.append("*Bijsturen:*")
     lines += [f"  {f}" for f in steering_flags(r)]
     return "\n".join(lines)
@@ -200,10 +211,10 @@ def main() -> None:
 
     r = campaign_stats(key, cid, since)
     replies = fetch_reply_items(key, cid, since) if r["reply"] else []
-    sent_counts = classify_sentiment(replies, anth)
+    sent_counts, labeled = classify_sentiment(replies, anth)
 
     since_label = f" (sinds {args.since})" if args.since else ""
-    msg = build_message(r, sent_counts, since_label)
+    msg = build_message(r, sent_counts, labeled, since_label)
     print(msg)
 
     if not args.no_slack:
