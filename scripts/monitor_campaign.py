@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Dagelijkse Lemlist-campagne monitor -> Slack, met bijstuur-drempels + reply-sentiment.
 
-Hergebruikt ab_report.py voor de stats (sent/open/reply/click/bounce/unsub) en voegt toe:
+Self-contained (geen externe project-imports). Doet:
+  - Stats per campagne via Lemlist /api/activities: sent/open/reply/click/bounce/unsub + rates.
   - Reply-sentiment (Claude Haiku op subject + messagePreview): interesse/vraag/bezwaar/afwijzing.
-    LET OP: Lemlist geeft alleen een korte preview terug, geen volledige reply-tekst -> grove eerste pass.
+    LET OP: Lemlist geeft alleen een korte preview, geen volledige reply-tekst -> grove eerste pass.
   - Bijstuur-drempels (open/reply/bounce/unsub) -> concrete actie-flags.
   - Slack-post (SLACK_WEBHOOK_URL).
 
@@ -16,47 +17,100 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
+import os
+import re
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import ab_report as ab  # noqa: E402  (hergebruik get/fetch/campaign/load_env/API)
-
-# Bijstuur-drempels (rates in %); buiten deze grenzen -> actie-flag.
+API = "https://api.lemlist.com/api"
+TYPES = ["emailsSent", "emailsOpened", "emailsClicked", "emailsReplied", "emailsBounced", "unsubscribed"]
 THRESHOLDS = {"open": 40.0, "reply": 5.0, "bounce": 5.0, "unsub": 2.0}
 SENTIMENTS = ["interesse", "vraag", "bezwaar", "afwijzing", "overig"]
 MONITOR_MODEL = "claude-haiku-4-5-20251001"
 
 
-def fetch_reply_items(key: str, cid: str, since: datetime | None, cap: int = 60) -> list[dict]:
-    """Haal ruwe emailsReplied-activiteiten op (subject + messagePreview + fromEmail)."""
-    items, off = [], 0
-    while len(items) < cap:
-        r = ab.get(f"{ab.API}/activities", key,
-                   params={"campaignId": cid, "type": "emailsReplied", "limit": 100, "offset": off})
+def load_env() -> dict:
+    env = dict(os.environ)
+    f = Path(__file__).resolve().parent.parent / ".env.local"
+    if f.exists():
+        for k, v in re.findall(r"^([A-Z_]+)=(.*)$", f.read_text(), re.M):
+            if not env.get(k):
+                env[k] = v.strip()
+    return env
+
+
+def get(url: str, key: str, **kw) -> requests.Response:
+    """Throttled GET met 429-backoff (Lemlist knijpt ~retry-after:2)."""
+    r = None
+    for _ in range(4):
+        time.sleep(3.5)
+        r = requests.get(url, auth=("", key), timeout=30, **kw)
+        if r.status_code == 429:
+            time.sleep(int(r.headers.get("retry-after", 5)) + 2)
+            continue
+        return r
+    return r
+
+
+def _iter_activities(key: str, cid: str, typ: str, since: datetime | None, cap: int = 100000):
+    """Yield activity-dicts voor een type, met paginatie + since-filter."""
+    off = 0
+    while off < cap:
+        r = get(f"{API}/activities", key,
+                params={"campaignId": cid, "type": typ, "limit": 100, "offset": off})
         if r.status_code != 200:
             break
         batch = r.json()
         if not isinstance(batch, list) or not batch:
             break
         for a in batch:
-            ts = a.get("createdAt") or ""
+            ts = a.get("date") or a.get("createdAt") or ""
             if since and ts:
                 try:
                     if datetime.fromisoformat(ts.replace("Z", "+00:00")) < since:
                         continue
                 except ValueError:
                     pass
-            items.append({"subject": a.get("subject", ""),
-                          "preview": a.get("messagePreview", ""),
-                          "from": a.get("fromEmail", "")})
+            yield a
         off += len(batch)
         if len(batch) < 100:
             break
-    return items[:cap]
+
+
+def count(key: str, cid: str, typ: str, since: datetime | None) -> int:
+    return sum(1 for _ in _iter_activities(key, cid, typ, since))
+
+
+def campaign_name(key: str, cid: str) -> str:
+    try:
+        r = get(f"{API}/campaigns/{cid}", key)
+        return r.json().get("name", cid) if r.status_code == 200 else cid
+    except Exception:
+        return cid
+
+
+def campaign_stats(key: str, cid: str, since: datetime | None) -> dict:
+    stats = {t: count(key, cid, t, since) for t in TYPES}
+    return {
+        "name": campaign_name(key, cid), "id": cid,
+        "sent": stats["emailsSent"], "open": stats["emailsOpened"],
+        "reply": stats["emailsReplied"], "click": stats["emailsClicked"],
+        "bounce": stats["emailsBounced"], "unsub": stats["unsubscribed"],
+    }
+
+
+def fetch_reply_items(key: str, cid: str, since: datetime | None, cap: int = 60) -> list[dict]:
+    items = []
+    for a in _iter_activities(key, cid, "emailsReplied", since):
+        items.append({"subject": a.get("subject", ""),
+                      "preview": a.get("messagePreview", ""),
+                      "from": a.get("fromEmail", "")})
+        if len(items) >= cap:
+            break
+    return items
 
 
 def classify_sentiment(items: list[dict], anthropic_key: str | None) -> dict:
@@ -75,22 +129,19 @@ def classify_sentiment(items: list[dict], anthropic_key: str | None) -> dict:
             "Antwoord ALLEEN met een JSON-array van labels in dezelfde volgorde, bijv. "
             '["interesse","afwijzing"].\n\nReplies:\n' + "\n".join(lines)
         )
-        resp = client.messages.create(
-            model=MONITOR_MODEL, max_tokens=1000,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        resp = client.messages.create(model=MONITOR_MODEL, max_tokens=1000,
+                                      messages=[{"role": "user", "content": prompt}])
         text = "".join(b.text for b in resp.content if b.type == "text").strip()
         text = text[text.find("["): text.rfind("]") + 1]
         for label in json.loads(text):
             label = str(label).lower().strip()
             counts[label if label in counts else "overig"] += 1
-    except Exception as e:  # classificatie is best-effort, nooit blokkerend
+    except Exception as e:
         counts["_error"] = str(e)[:120]
     return counts
 
 
 def steering_flags(r: dict) -> list[str]:
-    """Concrete bijstuur-acties op basis van drempels."""
     sent = r["sent"] or 0
     if sent == 0:
         return ["ℹ️ Nog niets verzonden (campagne paused/draft) — start in Lemlist om te meten."]
@@ -141,13 +192,13 @@ def main() -> None:
     args = p.parse_args()
     since = datetime.fromisoformat(args.since).replace(tzinfo=timezone.utc) if args.since else None
 
-    env = ab.load_env()
+    env = load_env()
     key = env["LEMLIST_API_KEY"]
     cid = env["LEMLIST_CAMPAIGN_ID"]
     anth = env.get("ANTHROPIC_API_KEY")
     webhook = env.get("SLACK_WEBHOOK_URL")
 
-    r = ab.campaign(key, cid, since)
+    r = campaign_stats(key, cid, since)
     replies = fetch_reply_items(key, cid, since) if r["reply"] else []
     sent_counts = classify_sentiment(replies, anth)
 
