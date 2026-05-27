@@ -10,12 +10,14 @@ Invoked daily by .github/workflows/daily-cron.yml or manually:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import os
 import re
 import sys
 import time
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,6 +57,7 @@ class Config:
     log_dir: Path
     min_icp_score: int = 90
     canary_email: str | None = None
+    lemlist_campaign_id_b: str | None = None  # A/B: tweede campagne (frame-test). Leeg => alles naar A.
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -87,6 +90,7 @@ class Config:
             log_dir=ROOT / os.environ.get("LOG_DIR", "logs"),
             min_icp_score=int(os.environ.get("MIN_ICP_SCORE", "90")),
             canary_email=os.environ.get("CANARY_EMAIL") or None,
+            lemlist_campaign_id_b=os.environ.get("LEMLIST_CAMPAIGN_ID_B") or None,
         )
 
 
@@ -311,6 +315,7 @@ class ICPFilter:
         "youngcapital", "startpeople", "start-people", "yacht", "brunel", "huxley",
         "synsel", "usg", "hays", "luba", "timing", "driessen", "continu", "maandag",
         "covebo", "actiefwerkt", "tence", "bmc.nl", "westerhof",
+        "omniscout", "matchville",
     ]
 
     # Competitor/uitzendbureau op BEDRIJFSNAAM (V1 COMPETITOR_PATTERNS, word-boundary).
@@ -750,6 +755,8 @@ class StorageManager:
         self.log = log
         self.client: Client = create_client(cfg.supabase_url, cfg.supabase_key)
 
+    OFFSET_KEY = "rollout_offset.txt"
+
     def upload(self, local_path: Path, remote_name: str) -> str:
         with local_path.open("rb") as f:
             self.client.storage.from_(self.cfg.supabase_bucket).upload(
@@ -758,6 +765,25 @@ class StorageManager:
                 file_options={"content-type": "application/pdf", "upsert": "true"},
             )
         return self.client.storage.from_(self.cfg.supabase_bucket).get_public_url(remote_name)
+
+    def read_offset(self) -> int:
+        """Lees de persistente rollout-offset uit Supabase (default 0)."""
+        try:
+            data = self.client.storage.from_(self.cfg.supabase_bucket).download(self.OFFSET_KEY)
+            return int((data.decode() if isinstance(data, bytes) else str(data)).strip() or "0")
+        except Exception:
+            return 0
+
+    def write_offset(self, n: int) -> None:
+        """Schrijf de nieuwe rollout-offset terug naar Supabase."""
+        try:
+            self.client.storage.from_(self.cfg.supabase_bucket).upload(
+                path=self.OFFSET_KEY,
+                file=str(n).encode(),
+                file_options={"content-type": "text/plain", "upsert": "true"},
+            )
+        except Exception as e:
+            self.log.warning("Offset-write naar Supabase faalde: %s", e)
 
 
 # ---------------------------------------------------------------------------
@@ -772,8 +798,24 @@ class LemlistUploader:
         self.cfg = cfg
         self.log = log
 
+    def _campaign_for(self, email: str) -> tuple[str, str]:
+        """Kies (campaign_id, variant) per lead voor de frame-A/B-test.
+
+        Deterministisch op e-mailhash zodat re-runs en latere PATCH dezelfde
+        arm raken. Zonder LEMLIST_CAMPAIGN_ID_B gaat alles naar A (huidig gedrag).
+        """
+        if not self.cfg.lemlist_campaign_id_b:
+            return self.cfg.lemlist_campaign_id, "A"
+        digest = hashlib.sha256(email.strip().lower().encode()).digest()
+        if digest[0] & 1:
+            return self.cfg.lemlist_campaign_id_b, "B"
+        return self.cfg.lemlist_campaign_id, "A"
+
     def add_lead(self, lead: dict[str, Any]) -> dict[str, Any]:
-        url = f"{self.API_BASE}/campaigns/{self.cfg.lemlist_campaign_id}/leads/{lead['email']}"
+        campaign_id, variant = self._campaign_for(lead["email"])
+        lead["abVariant"] = variant  # custom field voor analyse in Lemlist/Pipedrive
+        self.log.info(f"Lead {lead['email']} -> variant {variant} (campaign {campaign_id})")
+        url = f"{self.API_BASE}/campaigns/{campaign_id}/leads/{lead['email']}"
         response = requests.post(
             url,
             auth=("", self.cfg.lemlist_api_key),
@@ -809,7 +851,8 @@ class LemlistUploader:
         Lemlist rate-limit: 1 req/12s. Wait before PATCH after POST.
         Retry once on 429 with longer backoff.
         """
-        url = f"{self.API_BASE}/campaigns/{self.cfg.lemlist_campaign_id}/leads/{lead['email']}"
+        campaign_id, _variant = self._campaign_for(lead["email"])
+        url = f"{self.API_BASE}/campaigns/{campaign_id}/leads/{lead['email']}"
         time.sleep(13)  # rate-limit buffer after the failed POST
 
         for attempt in (1, 2):
@@ -865,6 +908,8 @@ class RunStats:
 
 
 def slugify(value: str) -> str:
+    # ASCII-fold (ö->o, é->e) zodat Supabase storage-keys geldig zijn (geen non-ASCII).
+    value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
     return "".join(c if c.isalnum() else "_" for c in value).strip("_").lower()
 
 
@@ -1037,9 +1082,13 @@ def run() -> int:
     dedup.load_blocklist()
     deduplicated = dedup.filter(qualified)
     collapsed = collapse_by_company(deduplicated, log)
-    offset = int(os.environ.get("LEAD_OFFSET", "0"))
+    # Offset: expliciete env wint; anders auto-oplopende counter uit Supabase (30/dag rollout).
+    env_off = os.environ.get("LEAD_OFFSET")
+    auto_offset = not env_off
+    offset = int(env_off) if env_off else storage.read_offset()
     selected = collapsed[offset: offset + cfg.lead_batch_size]
-    log.info("Selectie: offset=%d, batch=%d -> %d leads van %d beschikbaar", offset, cfg.lead_batch_size, len(selected), len(collapsed))
+    log.info("Selectie: offset=%d (%s), batch=%d -> %d leads van %d beschikbaar",
+             offset, "auto/Supabase" if auto_offset else "env", cfg.lead_batch_size, len(selected), len(collapsed))
 
     stats = RunStats()
     for vacancy in selected:
@@ -1058,6 +1107,10 @@ def run() -> int:
         f"({stats.failed} failed) in {stats.elapsed():.1f}s"
     )
     log.info(summary)
+    # Auto-offset ophogen zodat de volgende (cron-)run de volgende batch pakt.
+    if auto_offset and not args.dry_run and selected:
+        storage.write_offset(offset + len(selected))
+        log.info("Rollout-offset opgehoogd naar %d", offset + len(selected))
     if not args.dry_run:
         notify_slack(cfg.slack_webhook_url, summary)
     return 0 if stats.failed == 0 else 1

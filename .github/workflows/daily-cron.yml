@@ -1,9 +1,8 @@
 name: JobDigger Daily Automation
 
 on:
-  # CRON DISABLED during manual rollout phase. Re-enable after 3 successful manual runs.
-  # schedule:
-  #   - cron: "0 7 * * *"  # 07:00 UTC daily
+  schedule:
+    - cron: "0 7 * * *"  # 07:00 UTC (09:00 CEST) dagelijks — 30 leads/dag, offset auto uit Supabase
   workflow_dispatch:
     inputs:
       lead_batch_size:
@@ -11,9 +10,9 @@ on:
         required: false
         default: "30"
       lead_offset:
-        description: "LEAD_OFFSET (start-index; verhoog per batch om door de lijst te lopen)"
+        description: "LEAD_OFFSET (leeg = auto-counter uit Supabase; getal = override)"
         required: false
-        default: "0"
+        default: ""
 
 concurrency:
   group: jobdigger-daily
@@ -71,7 +70,7 @@ jobs:
           SUPABASE_BUCKET: ${{ vars.SUPABASE_BUCKET || 'jobdigger-pdfs' }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           LEAD_BATCH_SIZE: ${{ github.event.inputs.lead_batch_size || vars.LEAD_BATCH_SIZE || '3' }}
-          LEAD_OFFSET: ${{ github.event.inputs.lead_offset || '0' }}
+          LEAD_OFFSET: ${{ github.event.inputs.lead_offset }}
           CANARY_EMAIL: ${{ vars.CANARY_EMAIL || '' }}
           MIN_ICP_SCORE: ${{ vars.MIN_ICP_SCORE || '65' }}
         run: |
