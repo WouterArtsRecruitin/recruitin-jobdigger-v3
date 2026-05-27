@@ -1,0 +1,45 @@
+name: JobDigger Campaign Monitor
+
+on:
+  schedule:
+    - cron: "0 8 * * *"  # 08:00 UTC (10:00 CEST) dagelijks
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "Alleen activiteit vanaf (YYYY-MM-DD); leeg = alle activiteit"
+        required: false
+        default: ""
+
+concurrency:
+  group: jobdigger-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install requests anthropic python-dotenv
+
+      - name: Run campaign monitor
+        env:
+          LEMLIST_API_KEY: ${{ secrets.LEMLIST_API_KEY }}
+          LEMLIST_CAMPAIGN_ID: ${{ secrets.LEMLIST_CAMPAIGN_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          SINCE="${{ github.event.inputs.since }}"
+          if [ -n "$SINCE" ]; then
+            python scripts/monitor_campaign.py --since "$SINCE"
+          else
+            python scripts/monitor_campaign.py
+          fi
